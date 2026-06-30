@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: enerflux-db
+    environment:
+      POSTGRES_USER: enerflux
+      POSTGRES_PASSWORD: enerflux
+      POSTGRES_DB: enerflux
+    ports:
+      - "5432:5432"
+    volumes:
+      - enerflux_data:/var/lib/postgresql/data
+
+volumes:
+  enerflux_data:
