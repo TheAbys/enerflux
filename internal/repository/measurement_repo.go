@@ -6,6 +6,12 @@ import (
 	"github.com/theabys/enerflux/internal/model"
 )
 
+type MeasurementRepository interface {
+	Insert(m model.Measurement) error
+	List(limit int) ([]model.Measurement, error)
+	GetLatest() (*model.Measurement, error)
+}
+
 type MeasurementRepo struct {
 	Db *DB
 }
@@ -14,7 +20,7 @@ func NewMeasurementRepo(db *DB) *MeasurementRepo {
 	return &MeasurementRepo{Db: db}
 }
 
-func (repo *MeasurementRepo) InsertMeasurement(m model.Measurement) error {
+func (repo *MeasurementRepo) Insert(m model.Measurement) error {
 	_, err := repo.Db.Conn.Exec(
 		context.Background(),
 		`INSERT INTO measurements (ts, type, value, unit, source)
