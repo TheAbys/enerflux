@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/theabys/enerflux/internal/api"
 	"github.com/theabys/enerflux/internal/config"
+	"github.com/theabys/enerflux/internal/datasource/eta"
 	"github.com/theabys/enerflux/internal/datasource/solarlog"
 	"github.com/theabys/enerflux/internal/logger"
 	"github.com/theabys/enerflux/internal/repository"
@@ -37,8 +39,20 @@ func main() {
 
 	// Worker
 	solarLogWorker := worker.NewWorker(log, cfg.PollInterval, solarLogService)
-
 	go solarLogWorker.Start(context.Background())
+
+	// Eta Client
+	etaClient := eta.NewClient("http://192.168.178.27:8080/user/var/40/10201/0/0/12015")
+
+	//Parser
+	etaParser := eta.NewParser()
+
+	// Service
+	etaService := service.NewEtaService(log, etaClient, etaParser, measurementRepo)
+
+	// Worker
+	etaWorker := worker.NewWorker(log, cfg.PollInterval+time.Second, etaService)
+	go etaWorker.Start(context.Background())
 
 	measurementService := service.NewMeasurementService(log, measurementRepo)
 	measurementHandler := api.NewMeasurementHandler(measurementService)

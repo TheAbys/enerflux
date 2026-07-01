@@ -5,32 +5,32 @@ import (
 	"log/slog"
 
 	fetcher "github.com/theabys/enerflux/internal/contract"
-	"github.com/theabys/enerflux/internal/datasource/solarlog"
+	"github.com/theabys/enerflux/internal/datasource/eta"
 	"github.com/theabys/enerflux/internal/repository"
 )
 
-type SolarLogService struct {
+type EtaService struct {
 	Logger  *slog.Logger
 	Fetcher fetcher.Fetcher
-	Parser  *solarlog.Parser
+	Parser  *eta.Parser
 	Repo    repository.MeasurementRepository
 }
 
-func NewSolarLogService(
+func NewEtaService(
 	l *slog.Logger,
 	f fetcher.Fetcher,
-	p *solarlog.Parser,
+	p *eta.Parser,
 	r repository.MeasurementRepository,
-) *SolarLogService {
-	return &SolarLogService{
-		Logger:  l.With("component", "solarlog-service"),
+) *EtaService {
+	return &EtaService{
+		Logger:  l.With("component", "eta-service"),
 		Fetcher: f,
 		Parser:  p,
 		Repo:    r,
 	}
 }
 
-func (s *SolarLogService) Sync(ctx context.Context) error {
+func (s *EtaService) Sync(ctx context.Context) error {
 	raw, err := s.Fetcher.Fetch(ctx)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func (s *SolarLogService) Sync(ctx context.Context) error {
 		return err
 	}
 
-	measurements := mapSolarLogToMeasurements(response)
+	measurements := mapEtaToMeasurements(response)
 
 	for _, m := range measurements {
 		err := s.Repo.Insert(m)
