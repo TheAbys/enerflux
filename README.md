@@ -108,33 +108,36 @@ Response:
 
 ## 🔧 Configuration
 
-Currently configured via code (will move to env later):
+The application is configured via environment variables.
 
-```go
-DatabaseURL: "postgres://enerflux:enerflux@localhost:5432/enerflux"
-SolarLogURL: "http://solar-log/getjp"
-PollInterval: 10 * time.Second
+### Required variables:
+
+```bash
+DATABASE_URL=postgres://enerflux:enerflux@localhost:5432/enerflux
+SOLARLOG_URL=http://solar-log/getjp
+POLL_INTERVAL=5s
 ```
-
 ---
 
-## 🐳 Run with Docker (planned)
+## 🧰 Taskfile Commands
 
+This project uses a Taskfile to simplify common development workflows.
+
+### ▶️ Start API
+```bash
+task run
 ```
-docker compose up
+
+### 🧪 Run Tests
+
+```bash
+task test
 ```
 
-Will include:
-- API
-- PostgreSQL
-- optional worker container
+### 🏗 Build Binary
 
----
-
-## 🧪 Development
-
-```
-go run ./cmd/api
+```bash
+task build
 ```
 
 ---
@@ -148,11 +151,13 @@ cmd/
 internal/
   api/                # HTTP layer (Gin)
   config/             # configuration
+  contract/           # contracts
   datasource/         # external integrations (SolarLog)
+  logger/             # logger
+  model/              # domain models
   repository/         # database access
   service/            # business logic
   worker/             # background sync
-  model/              # domain models
 
 migrations/           # DB schema
 testdata/            # sample SolarLog responses
@@ -167,7 +172,6 @@ testdata/            # sample SolarLog responses
 - ETA heating integration
 - Filtering & pagination
 - Docker setup
-- Logging improvements
 
 ### Future vision
 EnerFlux will evolve into a multi-source energy monitoring platform:

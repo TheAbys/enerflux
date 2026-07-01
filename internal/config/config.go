@@ -10,8 +10,8 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		DatabaseURL:  getEnv("DATABASE_URL", "postgres://enerflux:enerflux@localhost:5432/enerflux"),
-		SolarLogURL:  getEnv("SOLARLOG_URL", "http://solar-log/getjp"),
+		DatabaseURL:  mustGet("DATABASE_URL"),
+		SolarLogURL:  mustGet("SOLARLOG_URL"),
 		PollInterval: getDuration("POLL_INTERVAL", 1*time.Minute),
 	}
 }
