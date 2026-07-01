@@ -20,7 +20,7 @@ func main() {
 
 	db, err := repository.NewDB(cfg.DatabaseURL)
 	if err != nil {
-		log.Error("connection to database not possible", err)
+		log.Error("connection to database not possible", "error", err)
 	}
 
 	// Repo
