@@ -2,6 +2,7 @@ package service
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/theabys/enerflux/internal/datasource/eta"
@@ -43,7 +44,7 @@ func mapSolarLogToMeasurements(r solarlog.Response) []model.Measurement {
 	}
 }
 
-func mapEtaToMeasurements(r eta.Response) []model.Measurement {
+func mapEtaPelletStockToMeasurements(r eta.Response) []model.Measurement {
 
 	value := r.Values[0]
 
@@ -52,8 +53,25 @@ func mapEtaToMeasurements(r eta.Response) []model.Measurement {
 	return []model.Measurement{
 		{
 			TS:     ts,
-			Type:   "storage",
+			Type:   "eta.pellet.stock",
 			Value:  float64(parseInt(value.StrValue)),
+			Unit:   value.Unit,
+			Source: "eta",
+		},
+	}
+}
+
+func mapEtaOutsideTempToMeasurements(r eta.Response) []model.Measurement {
+
+	value := r.Values[0]
+
+	ts := time.Now()
+
+	return []model.Measurement{
+		{
+			TS:     ts,
+			Type:   "eta.sensor.outside",
+			Value:  parseCommaFloat(value.StrValue),
 			Unit:   value.Unit,
 			Source: "eta",
 		},
@@ -84,4 +102,10 @@ func parseTime(v any) time.Time {
 	}
 
 	return t
+}
+
+func parseCommaFloat(s string) float64 {
+	s = strings.ReplaceAll(s, ",", ".")
+	f, _ := strconv.ParseFloat(s, 64)
+	return f
 }

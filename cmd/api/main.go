@@ -37,22 +37,30 @@ func main() {
 	// Service
 	solarLogService := service.NewSolarLogService(log, solarlogClient, solarlogParser, measurementRepo)
 
-	// Worker
-	solarLogWorker := worker.NewWorker(log, cfg.PollInterval, solarLogService)
-	go solarLogWorker.Start(context.Background())
-
-	// Eta Client
-	etaClient := eta.NewClient("http://192.168.178.27:8080/user/var/40/10201/0/0/12015")
-
 	//Parser
 	etaParser := eta.NewParser()
 
 	// Service
-	etaService := service.NewEtaService(log, etaClient, etaParser, measurementRepo)
+	etaService := service.NewEtaService(log, eta.NewClient(cfg.EtaPelletstockUrl), eta.NewClient(cfg.EtaOutsidetempUrl), etaParser, measurementRepo)
 
-	// Worker
-	etaWorker := worker.NewWorker(log, cfg.PollInterval+time.Second, etaService)
-	go etaWorker.Start(context.Background())
+	// Scheduler
+	scheduler := worker.NewScheduler(log)
+	scheduler.Add(worker.Job{
+		Name:     "solarlog",
+		Interval: time.Second * 15,
+		Run:      solarLogService.Sync,
+	})
+	scheduler.Add(worker.Job{
+		Name:     "eta-pelletstock",
+		Interval: time.Second * 24,
+		Run:      etaService.SyncPelletStock,
+	})
+	scheduler.Add(worker.Job{
+		Name:     "eta-outsidetemp",
+		Interval: time.Second * 30,
+		Run:      etaService.SyncOutsideTemp,
+	})
+	scheduler.Start(context.Background())
 
 	measurementService := service.NewMeasurementService(log, measurementRepo)
 	measurementHandler := api.NewMeasurementHandler(measurementService)

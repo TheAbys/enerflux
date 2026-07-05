@@ -21,7 +21,7 @@ func NewMeasurementRepo(db *DB) *MeasurementRepo {
 }
 
 func (repo *MeasurementRepo) Insert(m model.Measurement) error {
-	_, err := repo.Db.Conn.Exec(
+	_, err := repo.Db.Exec(
 		context.Background(),
 		`INSERT INTO measurements (ts, type, value, unit, source)
 		 VALUES ($1, $2, $3, $4, $5)`,
@@ -31,7 +31,7 @@ func (repo *MeasurementRepo) Insert(m model.Measurement) error {
 }
 
 func (repo *MeasurementRepo) List(limit int) ([]model.Measurement, error) {
-	rows, err := repo.Db.Conn.Query(
+	rows, err := repo.Db.Query(
 		context.Background(),
 		`SELECT id, ts, type, value, unit, source
 		 FROM measurements
@@ -57,7 +57,7 @@ func (repo *MeasurementRepo) List(limit int) ([]model.Measurement, error) {
 }
 
 func (repo *MeasurementRepo) GetLatest() (*model.Measurement, error) {
-	rows, err := repo.Db.Conn.Query(
+	rows, err := repo.Db.Query(
 		context.Background(),
 		`SELECT id, ts, type, value, unit, source
 		 FROM measurements

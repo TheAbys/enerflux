@@ -2,34 +2,29 @@ package repository
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type DB struct {
-	Conn *pgx.Conn
+	pool *pgxpool.Pool
 }
 
 func NewDB(connString string) (*DB, error) {
-	conn, err := pgx.Connect(context.Background(), connString)
+	pool, err := pgxpool.New(context.Background(), connString)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DB{Conn: conn}, nil
+	return &DB{pool: pool}, nil
 }
 
-func (db *DB) Ping() error {
-	var result int
-	err := db.Conn.QueryRow(context.Background(), "SELECT 1").Scan(&result)
-	if err != nil {
-		return err
-	}
+func (db *DB) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return db.pool.Exec(ctx, sql, args...)
+}
 
-	if result != 1 {
-		return fmt.Errorf("unexpected ping result: %d", result)
-	}
-
-	return nil
+func (db *DB) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return db.pool.Query(ctx, sql, args...)
 }
