@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(m *MeasurementHandler, h *HealthHandler) *gin.Engine {
+func NewRouter(m *MeasurementHandler, metricsHandler *MetricHandler, h *HealthHandler) *gin.Engine {
 	router := gin.Default()
 	v1 := router.Group("/api/v1")
 	{
@@ -12,6 +12,11 @@ func NewRouter(m *MeasurementHandler, h *HealthHandler) *gin.Engine {
 		{
 			measurements.GET("", m.GetAll)
 			measurements.GET("/:id", m.GetLatest)
+		}
+
+		metrics := v1.Group("/metrics")
+		{
+			metrics.GET("/", metricsHandler.GetMetrics)
 		}
 
 		health := v1.Group("/health")

@@ -64,10 +64,12 @@ func main() {
 	measurementService := service.NewMeasurementService(log, measurementRepo)
 	measurementHandler := api.NewMeasurementHandler(measurementService)
 	healthHandler := api.NewHealthHandler()
+	metricHandler := api.NewMetricHandler(measurementService)
 
 	// API
 	router := api.NewRouter(
 		measurementHandler,
+		metricHandler,
 		healthHandler,
 	)
 

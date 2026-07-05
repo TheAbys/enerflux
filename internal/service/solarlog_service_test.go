@@ -6,6 +6,7 @@ import (
 
 	"github.com/theabys/enerflux/internal/datasource/solarlog"
 	"github.com/theabys/enerflux/internal/logger"
+	filter "github.com/theabys/enerflux/internal/measurements"
 	"github.com/theabys/enerflux/internal/model"
 )
 
@@ -43,6 +44,10 @@ func (repo *mockRepo) GetLatest() (*model.Measurement, error) {
 	return nil, nil
 }
 
+func (repo *mockRepo) QueryMeasurements(ctx context.Context, filter filter.MeasurementFilter) ([]model.Measurement, error) {
+	return nil, nil
+}
+
 func TestSolarLogService_Sync(t *testing.T) {
 
 	fetcher := &mockFetcher{}
@@ -57,10 +62,10 @@ func TestSolarLogService_Sync(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if repo.called != 3 {
+	if repo.called != 15 {
 		t.Fatalf("expected repo to be called once, got %d", repo.called)
 	}
-	if len(repo.measurements) == 3 && repo.measurements[0].Type != "pv.power" {
+	if len(repo.measurements) == 15 && repo.measurements[0].Type != "pv.power" {
 		t.Fatalf("expected first measurement to be pv.power")
 	}
 
