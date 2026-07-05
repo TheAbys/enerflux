@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"time"
 
 	"github.com/theabys/enerflux/internal/api"
 	"github.com/theabys/enerflux/internal/config"
@@ -47,17 +46,17 @@ func main() {
 	scheduler := worker.NewScheduler(log)
 	scheduler.Add(worker.Job{
 		Name:     "solarlog",
-		Interval: time.Second * 15,
+		Interval: cfg.SolarLogPollInterval,
 		Run:      solarLogService.Sync,
 	})
 	scheduler.Add(worker.Job{
 		Name:     "eta-pelletstock",
-		Interval: time.Second * 24,
+		Interval: cfg.EtaPelletstockInterval,
 		Run:      etaService.SyncPelletStock,
 	})
 	scheduler.Add(worker.Job{
 		Name:     "eta-outsidetemp",
-		Interval: time.Second * 30,
+		Interval: cfg.EtaOutsidetempPollInterval,
 		Run:      etaService.SyncOutsideTemp,
 	})
 	scheduler.Start(context.Background())

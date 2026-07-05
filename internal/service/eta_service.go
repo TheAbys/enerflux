@@ -6,6 +6,7 @@ import (
 
 	fetcher "github.com/theabys/enerflux/internal/contract"
 	"github.com/theabys/enerflux/internal/datasource/eta"
+	"github.com/theabys/enerflux/internal/mapper"
 	"github.com/theabys/enerflux/internal/repository"
 )
 
@@ -44,7 +45,7 @@ func (s *EtaService) SyncPelletStock(ctx context.Context) error {
 		return err
 	}
 
-	measurements := mapEtaPelletStockToMeasurements(response)
+	measurements := mapper.FromETA(response)
 
 	for _, m := range measurements {
 		err := s.Repo.Insert(m)
@@ -68,7 +69,7 @@ func (s *EtaService) SyncOutsideTemp(ctx context.Context) error {
 		return err
 	}
 
-	measurements := mapEtaOutsideTempToMeasurements(response)
+	measurements := mapper.FromETA(response)
 
 	for _, m := range measurements {
 		err := s.Repo.Insert(m)
