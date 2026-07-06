@@ -1,19 +1,64 @@
-package measurements
+package solarlog
 
 import (
-	"strconv"
-	"strings"
+	"context"
+	"log/slog"
 	"time"
 
-	"github.com/theabys/enerflux/internal/datasource/eta"
-	"github.com/theabys/enerflux/internal/datasource/solarlog"
+	"github.com/theabys/enerflux/internal/collectors"
+	"github.com/theabys/enerflux/internal/measurements"
 )
 
-func FromSolarLog(r solarlog.Response) []Measurement {
+type SolarLogCollector struct {
+	Logger  *slog.Logger
+	Fetcher collectors.Fetcher
+	Parser  *Parser
+	Repo    measurements.MeasurementRepository
+}
+
+func NewSolarLogCollector(
+	l *slog.Logger,
+	f collectors.Fetcher,
+	p *Parser,
+	r measurements.MeasurementRepository,
+) *SolarLogCollector {
+	return &SolarLogCollector{
+		Logger:  l.With("component", "solarlog-collector"),
+		Fetcher: f,
+		Parser:  p,
+		Repo:    r,
+	}
+}
+
+func (s *SolarLogCollector) Sync(ctx context.Context) error {
+	raw, err := s.Fetcher.Fetch(ctx)
+	if err != nil {
+		return err
+	}
+
+	response, err := s.Parser.Parse(raw)
+	if err != nil {
+		return err
+	}
+
+	measurements := FromSolarLog(response)
+
+	for _, m := range measurements {
+		err := s.Repo.Insert(m)
+		if err != nil {
+			return err
+		}
+	}
+	s.Logger.Info("sync completed", "inserted", len(measurements))
+
+	return nil
+}
+
+func FromSolarLog(r Response) []measurements.Measurement {
 	s := r.Section801.Section170
 	ts := time.Now()
 
-	return []Measurement{
+	return []measurements.Measurement{
 		{
 			TS:     ts,
 			Type:   "pv.power",
@@ -124,38 +169,4 @@ func FromSolarLog(r solarlog.Response) []Measurement {
 			Source: "solarlog",
 		},
 	}
-}
-func FromETA(r eta.Eta) []Measurement {
-	ts := time.Now()
-
-	out := make([]Measurement, 0, len(r.Values))
-
-	for _, v := range r.Values {
-		out = append(out, Measurement{
-			TS:     ts,
-			Type:   mapETAType(v.Uri),
-			Value:  parseCommaFloat(v.StrValue),
-			Unit:   v.Unit,
-			Source: "eta",
-		})
-	}
-
-	return out
-}
-
-func mapETAType(uri string) string {
-	switch uri {
-	case "/user/var/120/10601/0/0/12197":
-		return "climate.temperature.outside"
-	case "/user/var/40/10201/0/0/12015":
-		return "heating.pellet.stock"
-	default:
-		return "unknown"
-	}
-}
-
-func parseCommaFloat(s string) float64 {
-	s = strings.ReplaceAll(s, ",", ".")
-	f, _ := strconv.ParseFloat(s, 64)
-	return f
 }

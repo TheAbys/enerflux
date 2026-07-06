@@ -1,10 +1,9 @@
-package service
+package solarlog
 
 import (
 	"context"
 	"testing"
 
-	"github.com/theabys/enerflux/internal/datasource/solarlog"
 	"github.com/theabys/enerflux/internal/logger"
 	"github.com/theabys/enerflux/internal/measurements"
 	filter "github.com/theabys/enerflux/internal/measurements"
@@ -48,14 +47,14 @@ func (repo *mockRepo) QueryMeasurements(ctx context.Context, filter filter.Measu
 	return nil, nil
 }
 
-func TestSolarLogService_Sync(t *testing.T) {
+func TestSolarLogCollector_Sync(t *testing.T) {
 
 	fetcher := &mockFetcher{}
 	repo := &mockRepo{}
 
-	parser := solarlog.NewParser()
+	parser := NewParser()
 
-	svc := NewSolarLogService(logger.New(), fetcher, parser, repo)
+	svc := NewSolarLogCollector(logger.New(), fetcher, parser, repo)
 
 	err := svc.Sync(context.Background())
 	if err != nil {

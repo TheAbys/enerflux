@@ -4,15 +4,14 @@ import (
 	"context"
 
 	"github.com/theabys/enerflux/internal/api"
+	"github.com/theabys/enerflux/internal/collectors/eta"
+	"github.com/theabys/enerflux/internal/collectors/solarlog"
 	"github.com/theabys/enerflux/internal/config"
 	"github.com/theabys/enerflux/internal/database"
-	"github.com/theabys/enerflux/internal/datasource/eta"
-	"github.com/theabys/enerflux/internal/datasource/solarlog"
 	"github.com/theabys/enerflux/internal/health"
 	"github.com/theabys/enerflux/internal/logger"
 	"github.com/theabys/enerflux/internal/measurements"
 	"github.com/theabys/enerflux/internal/metrics"
-	"github.com/theabys/enerflux/internal/service"
 	"github.com/theabys/enerflux/internal/worker"
 )
 
@@ -37,30 +36,30 @@ func main() {
 	solarlogParser := solarlog.NewParser()
 
 	// Service
-	solarLogService := service.NewSolarLogService(log, solarlogClient, solarlogParser, measurementRepo)
+	solarLogCollector := solarlog.NewSolarLogCollector(log, solarlogClient, solarlogParser, measurementRepo)
 
 	//Parser
 	etaParser := eta.NewParser()
 
 	// Service
-	etaService := service.NewEtaService(log, eta.NewClient(cfg.EtaPelletstockUrl), eta.NewClient(cfg.EtaOutsidetempUrl), etaParser, measurementRepo)
+	etaCollector := eta.NewEtaCollector(log, eta.NewClient(cfg.EtaPelletstockUrl), eta.NewClient(cfg.EtaOutsidetempUrl), etaParser, measurementRepo)
 
 	// Scheduler
 	scheduler := worker.NewScheduler(log)
 	scheduler.Add(worker.Job{
 		Name:     "solarlog",
 		Interval: cfg.SolarLogPollInterval,
-		Run:      solarLogService.Sync,
+		Run:      solarLogCollector.Sync,
 	})
 	scheduler.Add(worker.Job{
 		Name:     "eta-pelletstock",
 		Interval: cfg.EtaPelletstockInterval,
-		Run:      etaService.SyncPelletStock,
+		Run:      etaCollector.SyncPelletStock,
 	})
 	scheduler.Add(worker.Job{
 		Name:     "eta-outsidetemp",
 		Interval: cfg.EtaOutsidetempPollInterval,
-		Run:      etaService.SyncOutsideTemp,
+		Run:      etaCollector.SyncOutsideTemp,
 	})
 	scheduler.Start(context.Background())
 
