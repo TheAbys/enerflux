@@ -6,8 +6,8 @@ import (
 
 	"github.com/theabys/enerflux/internal/datasource/solarlog"
 	"github.com/theabys/enerflux/internal/logger"
+	"github.com/theabys/enerflux/internal/measurements"
 	filter "github.com/theabys/enerflux/internal/measurements"
-	"github.com/theabys/enerflux/internal/model"
 )
 
 type mockFetcher struct{}
@@ -27,24 +27,24 @@ func (m *mockFetcher) Fetch(ctx context.Context) ([]byte, error) {
 
 type mockRepo struct {
 	called       int
-	measurements []model.Measurement
+	measurements []measurements.Measurement
 }
 
-func (repo *mockRepo) Insert(m model.Measurement) error {
+func (repo *mockRepo) Insert(m measurements.Measurement) error {
 	repo.called++
 	repo.measurements = append(repo.measurements, m)
 	return nil
 }
 
-func (repo *mockRepo) List(limit int) ([]model.Measurement, error) {
+func (repo *mockRepo) List(limit int) ([]measurements.Measurement, error) {
 	return nil, nil
 }
 
-func (repo *mockRepo) GetLatest() (*model.Measurement, error) {
+func (repo *mockRepo) GetLatest() (*measurements.Measurement, error) {
 	return nil, nil
 }
 
-func (repo *mockRepo) QueryMeasurements(ctx context.Context, filter filter.MeasurementFilter) ([]model.Measurement, error) {
+func (repo *mockRepo) QueryMeasurements(ctx context.Context, filter filter.MeasurementFilter) ([]measurements.Measurement, error) {
 	return nil, nil
 }
 

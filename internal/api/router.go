@@ -2,9 +2,12 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/theabys/enerflux/internal/health"
+	"github.com/theabys/enerflux/internal/measurements"
+	"github.com/theabys/enerflux/internal/metrics"
 )
 
-func NewRouter(m *MeasurementHandler, metricsHandler *MetricHandler, h *HealthHandler) *gin.Engine {
+func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.MetricHandler, h *health.HealthHandler) *gin.Engine {
 	router := gin.Default()
 	v1 := router.Group("/api/v1")
 	{

@@ -6,8 +6,7 @@ import (
 
 	fetcher "github.com/theabys/enerflux/internal/contract"
 	"github.com/theabys/enerflux/internal/datasource/eta"
-	"github.com/theabys/enerflux/internal/mapper"
-	"github.com/theabys/enerflux/internal/repository"
+	"github.com/theabys/enerflux/internal/measurements"
 )
 
 type EtaService struct {
@@ -15,7 +14,7 @@ type EtaService struct {
 	PelletStockFetcher fetcher.Fetcher
 	OutsideTempFetcher fetcher.Fetcher
 	Parser             *eta.Parser
-	Repo               repository.MeasurementRepository
+	Repo               measurements.MeasurementRepository
 }
 
 func NewEtaService(
@@ -23,7 +22,7 @@ func NewEtaService(
 	pf fetcher.Fetcher,
 	of fetcher.Fetcher,
 	p *eta.Parser,
-	r repository.MeasurementRepository,
+	r measurements.MeasurementRepository,
 ) *EtaService {
 	return &EtaService{
 		Logger:             l.With("component", "eta-service"),
@@ -45,7 +44,7 @@ func (s *EtaService) SyncPelletStock(ctx context.Context) error {
 		return err
 	}
 
-	measurements := mapper.FromETA(response)
+	measurements := measurements.FromETA(response)
 
 	for _, m := range measurements {
 		err := s.Repo.Insert(m)
@@ -69,7 +68,7 @@ func (s *EtaService) SyncOutsideTemp(ctx context.Context) error {
 		return err
 	}
 
-	measurements := mapper.FromETA(response)
+	measurements := measurements.FromETA(response)
 
 	for _, m := range measurements {
 		err := s.Repo.Insert(m)

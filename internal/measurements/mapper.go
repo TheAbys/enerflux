@@ -1,4 +1,4 @@
-package mapper
+package measurements
 
 import (
 	"strconv"
@@ -7,14 +7,13 @@ import (
 
 	"github.com/theabys/enerflux/internal/datasource/eta"
 	"github.com/theabys/enerflux/internal/datasource/solarlog"
-	"github.com/theabys/enerflux/internal/model"
 )
 
-func FromSolarLog(r solarlog.Response) []model.Measurement {
+func FromSolarLog(r solarlog.Response) []Measurement {
 	s := r.Section801.Section170
 	ts := time.Now()
 
-	return []model.Measurement{
+	return []Measurement{
 		{
 			TS:     ts,
 			Type:   "pv.power",
@@ -126,13 +125,13 @@ func FromSolarLog(r solarlog.Response) []model.Measurement {
 		},
 	}
 }
-func FromETA(r eta.Eta) []model.Measurement {
+func FromETA(r eta.Eta) []Measurement {
 	ts := time.Now()
 
-	out := make([]model.Measurement, 0, len(r.Values))
+	out := make([]Measurement, 0, len(r.Values))
 
 	for _, v := range r.Values {
-		out = append(out, model.Measurement{
+		out = append(out, Measurement{
 			TS:     ts,
 			Type:   mapETAType(v.Uri),
 			Value:  parseCommaFloat(v.StrValue),

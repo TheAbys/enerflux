@@ -1,20 +1,17 @@
-package api
+package measurements
 
 import (
 	"net/http"
 	"time"
 
-	"github.com/theabys/enerflux/internal/model"
-	"github.com/theabys/enerflux/internal/service"
-
 	"github.com/gin-gonic/gin"
 )
 
 type MeasurementHandler struct {
-	Service *service.MeasurementService
+	Service *MeasurementService
 }
 
-func NewMeasurementHandler(s *service.MeasurementService) *MeasurementHandler {
+func NewMeasurementHandler(s *MeasurementService) *MeasurementHandler {
 	return &MeasurementHandler{Service: s}
 }
 
@@ -28,7 +25,10 @@ type CreateMeasurementRequest struct {
 
 func (h *MeasurementHandler) GetAll(c *gin.Context) {
 
-	data, err := h.Service.GetAll()
+	// TODO: parse query param and build filter
+	filter := MeasurementFilter{}
+
+	data, err := h.Service.GetAll(c.Request.Context(), filter)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -56,7 +56,7 @@ func (h *MeasurementHandler) Create(c *gin.Context) {
 		return
 	}
 
-	err := h.Service.Create(model.Measurement{
+	err := h.Service.Create(Measurement{
 		TS:     req.TS,
 		Type:   req.Type,
 		Value:  req.Value,

@@ -6,22 +6,21 @@ import (
 
 	fetcher "github.com/theabys/enerflux/internal/contract"
 	"github.com/theabys/enerflux/internal/datasource/solarlog"
-	"github.com/theabys/enerflux/internal/mapper"
-	"github.com/theabys/enerflux/internal/repository"
+	"github.com/theabys/enerflux/internal/measurements"
 )
 
 type SolarLogService struct {
 	Logger  *slog.Logger
 	Fetcher fetcher.Fetcher
 	Parser  *solarlog.Parser
-	Repo    repository.MeasurementRepository
+	Repo    measurements.MeasurementRepository
 }
 
 func NewSolarLogService(
 	l *slog.Logger,
 	f fetcher.Fetcher,
 	p *solarlog.Parser,
-	r repository.MeasurementRepository,
+	r measurements.MeasurementRepository,
 ) *SolarLogService {
 	return &SolarLogService{
 		Logger:  l.With("component", "solarlog-service"),
@@ -42,7 +41,7 @@ func (s *SolarLogService) Sync(ctx context.Context) error {
 		return err
 	}
 
-	measurements := mapper.FromSolarLog(response)
+	measurements := measurements.FromSolarLog(response)
 
 	for _, m := range measurements {
 		err := s.Repo.Insert(m)

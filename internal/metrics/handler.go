@@ -1,16 +1,15 @@
-package api
+package metrics
 
 import (
 	"github.com/gin-gonic/gin"
-	filter "github.com/theabys/enerflux/internal/measurements"
-	"github.com/theabys/enerflux/internal/service"
+	"github.com/theabys/enerflux/internal/measurements"
 )
 
 type MetricHandler struct {
-	Service *service.MeasurementService
+	Service *MetricService
 }
 
-func NewMetricHandler(s *service.MeasurementService) *MetricHandler {
+func NewMetricHandler(s *MetricService) *MetricHandler {
 	return &MetricHandler{Service: s}
 }
 
@@ -22,7 +21,7 @@ func (h *MetricHandler) GetMetrics(c *gin.Context) {
 		return
 	}
 
-	filter := filter.MeasurementFilter{
+	filter := measurements.MeasurementFilter{
 		Key: key,
 	}
 	data, err := h.Service.GetMetrics(c.Request.Context(), filter)

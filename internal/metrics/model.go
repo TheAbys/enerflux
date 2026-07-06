@@ -1,4 +1,4 @@
-package model
+package metrics
 
 import "time"
 

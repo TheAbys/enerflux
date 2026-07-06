@@ -5,10 +5,13 @@ import (
 
 	"github.com/theabys/enerflux/internal/api"
 	"github.com/theabys/enerflux/internal/config"
+	"github.com/theabys/enerflux/internal/database"
 	"github.com/theabys/enerflux/internal/datasource/eta"
 	"github.com/theabys/enerflux/internal/datasource/solarlog"
+	"github.com/theabys/enerflux/internal/health"
 	"github.com/theabys/enerflux/internal/logger"
-	"github.com/theabys/enerflux/internal/repository"
+	"github.com/theabys/enerflux/internal/measurements"
+	"github.com/theabys/enerflux/internal/metrics"
 	"github.com/theabys/enerflux/internal/service"
 	"github.com/theabys/enerflux/internal/worker"
 )
@@ -19,13 +22,13 @@ func main() {
 
 	cfg := config.Load()
 
-	db, err := repository.NewDB(cfg.DatabaseURL)
+	db, err := database.NewDB(cfg.DatabaseURL)
 	if err != nil {
 		log.Error("connection to database not possible", "error", err)
 	}
 
 	// Repo
-	measurementRepo := repository.NewMeasurementRepo(db)
+	measurementRepo := measurements.NewMeasurementRepo(db)
 
 	// SolarLog Client
 	solarlogClient := solarlog.NewClient(cfg.SolarLogURL)
@@ -61,10 +64,13 @@ func main() {
 	})
 	scheduler.Start(context.Background())
 
-	measurementService := service.NewMeasurementService(log, measurementRepo)
-	measurementHandler := api.NewMeasurementHandler(measurementService)
-	healthHandler := api.NewHealthHandler()
-	metricHandler := api.NewMetricHandler(measurementService)
+	measurementService := measurements.NewMeasurementService(log, measurementRepo)
+
+	metricService := metrics.NewMetricService(log, measurementService)
+
+	measurementHandler := measurements.NewMeasurementHandler(measurementService)
+	healthHandler := health.NewHealthHandler()
+	metricHandler := metrics.NewMetricHandler(metricService)
 
 	// API
 	router := api.NewRouter(
