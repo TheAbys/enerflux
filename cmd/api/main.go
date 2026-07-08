@@ -7,6 +7,7 @@ import (
 	"github.com/theabys/enerflux/internal/collectors/eta"
 	"github.com/theabys/enerflux/internal/collectors/solarlog"
 	"github.com/theabys/enerflux/internal/config"
+	"github.com/theabys/enerflux/internal/dashboard"
 	"github.com/theabys/enerflux/internal/database"
 	"github.com/theabys/enerflux/internal/health"
 	"github.com/theabys/enerflux/internal/logger"
@@ -70,12 +71,14 @@ func main() {
 	measurementHandler := measurements.NewMeasurementHandler(measurementService)
 	healthHandler := health.NewHealthHandler()
 	metricHandler := metrics.NewMetricHandler(metricService)
+	dashboardHandler := dashboard.NewDashboardHandler()
 
 	// API
 	router := api.NewRouter(
 		measurementHandler,
 		metricHandler,
 		healthHandler,
+		dashboardHandler,
 	)
 
 	log.Info("API started", "port", "8080")
