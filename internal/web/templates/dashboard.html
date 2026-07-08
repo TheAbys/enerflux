@@ -1,18 +1,33 @@
 <!doctype html>
 <html>
+
 <head>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/htmx.org"></script>
-    <meta http-equiv="refresh" content="5" >
 </head>
 
 <body>
 
-<h1>EnerFlux</h1>
+    <h1>EnerFlux</h1>
 
-<canvas id="energyChart"></canvas>
+    <select id="metric">
+        <option value="grid.consumption.power">grid.consumption.power</option>
+        <option value="heating.pellet.stock">heating.pellet.stock</option>
+        <option value="climate.temperature.outside">climate.temperature.outside</option>        
+    </select>
 
-<script src="/static/js/dashboard.js"></script>
+    <canvas id="chart"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+
+    <script>
+        loadMetric("chart", "grid.consumption.power");
+        document.getElementById("metric").addEventListener("change", e => {
+            loadMetric("chart", e.target.value);
+        });
+    </script>
 
 </body>
+
 </html>

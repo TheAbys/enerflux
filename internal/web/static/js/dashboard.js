@@ -1,24 +1,34 @@
-const key = 'grid.consumption.power'
-fetch("/api/v1/metrics/?key=" + key)
-    .then(r => r.json())
-    .then(data => {
-        const ctx = document.getElementById('energyChart');
+async function loadMetric(canvasId, metricKey) {
+    const response = await fetch(`/api/v1/metrics/?key=${encodeURIComponent(metricKey)}`);
+    const data = await response.json();
 
-        const labels = data.map(item => item.TS);
-        const values = data.map(item => item.Value);
+    renderChart(canvasId, data, metricKey);
+}
 
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.map(x =>
-                    new Date(x.TS).toLocaleTimeString()
-                ),
-                datasets: [{
-                    label: key,
-                    data: values,
-                    borderColor: "#245e2c",
-                    backgroundColor: "#245e2c"
-                }]
-            }
-        })
+let charts = {};
+
+function renderChart(canvasId, data, title) {
+    const labels = data.map(x =>
+        new Date(x.TS).toLocaleTimeString()
+    );
+
+    const values = data.map(x => x.Value);
+
+    const ctx = document.getElementById(canvasId);
+
+    if (charts[canvasId]) {
+        charts[canvasId].destroy();
+    }
+
+    charts[canvasId] = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [{
+                label: title,
+                data: values,
+                tension: 0.2
+            }]
+        }
     });
+}
