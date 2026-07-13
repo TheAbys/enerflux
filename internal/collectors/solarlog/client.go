@@ -26,7 +26,7 @@ func (c *Client) Fetch(ctx context.Context) ([]byte, error) {
 
 	payload := []byte(`{"801":{"170":null}}`)
 
-	req, err := http.NewRequest("POST", c.baseURL, bytes.NewBuffer(payload))
+	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL, bytes.NewBuffer(payload))
 	if err != nil {
 		return nil, err
 	}

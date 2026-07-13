@@ -41,12 +41,18 @@ func (s *Scheduler) runJob(ctx context.Context, job Job) {
 	ticker := time.NewTicker(job.Interval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		s.Logger.Info("job tick started", "name", job.Name)
-		err := job.Run(ctx)
-		if err != nil {
-			s.Logger.Error("sync execution failed", "name", job.Name, "error", err)
+	for {
+		select {
+		case <-ticker.C:
+			s.Logger.Info("job tick started", "name", job.Name)
+			if err := job.Run(ctx); err != nil {
+				s.Logger.Error("sync execution failed", "name", job.Name, "error", err)
+			}
+			s.Logger.Info("job tick finished", "name", job.Name)
+
+		case <-ctx.Done():
+			s.Logger.Info("job stopped", "name", job.Name)
+			return
 		}
-		s.Logger.Info("job tick finished", "name", job.Name)
 	}
 }
