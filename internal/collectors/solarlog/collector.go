@@ -30,28 +30,20 @@ func NewSolarLogCollector(
 	}
 }
 
-func (s *SolarLogCollector) Sync(ctx context.Context) error {
+func (s *SolarLogCollector) Sync(ctx context.Context) ([]measurements.Measurement, error) {
 	raw, err := s.Fetcher.Fetch(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	response, err := s.Parser.Parse(raw)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	measurements := FromSolarLog(response)
 
-	for _, m := range measurements {
-		err := s.Repo.Insert(m)
-		if err != nil {
-			return err
-		}
-	}
-	s.Logger.Info("sync completed", "inserted", len(measurements))
-
-	return nil
+	return measurements, nil
 }
 
 func FromSolarLog(r Response) []measurements.Measurement {

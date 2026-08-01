@@ -35,52 +35,36 @@ func NewEtaCollector(
 	}
 }
 
-func (s *EtaCollector) SyncPelletStock(ctx context.Context) error {
+func (s *EtaCollector) SyncPelletStock(ctx context.Context) ([]measurements.Measurement, error) {
 	raw, err := s.PelletStockFetcher.Fetch(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	response, err := s.Parser.Parse(raw)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	measurements := FromETA(response)
 
-	for _, m := range measurements {
-		err := s.Repo.Insert(m)
-		if err != nil {
-			return err
-		}
-	}
-	s.Logger.Info("sync completed", "inserted", len(measurements))
-
-	return nil
+	return measurements, nil
 }
 
-func (s *EtaCollector) SyncOutsideTemp(ctx context.Context) error {
+func (s *EtaCollector) SyncOutsideTemp(ctx context.Context) ([]measurements.Measurement, error) {
 	raw, err := s.OutsideTempFetcher.Fetch(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	response, err := s.Parser.Parse(raw)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	measurements := FromETA(response)
 
-	for _, m := range measurements {
-		err := s.Repo.Insert(m)
-		if err != nil {
-			return err
-		}
-	}
-	s.Logger.Info("sync completed", "inserted", len(measurements))
-
-	return nil
+	return measurements, nil
 }
 
 func FromETA(r Eta) []measurements.Measurement {

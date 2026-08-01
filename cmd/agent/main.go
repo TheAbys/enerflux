@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/theabys/enerflux/internal/agent"
 	"github.com/theabys/enerflux/internal/collectors/eta"
 	"github.com/theabys/enerflux/internal/collectors/solarlog"
 	"github.com/theabys/enerflux/internal/config"
@@ -47,22 +48,45 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	uploader := agent.NewHTTPUploader("http://localhost:8080/")
+
 	// Scheduler
 	scheduler := worker.NewScheduler(log)
 	scheduler.Add(worker.Job{
 		Name:     "solarlog",
 		Interval: cfg.SolarLogPollInterval,
-		Run:      solarLogCollector.Sync,
+		Run: func(ctx context.Context) error {
+			items, err := solarLogCollector.Sync(ctx)
+			if err != nil {
+				return err
+			}
+
+			return uploader.Upload(ctx, agent.ToPayloads(items))
+		},
 	})
 	scheduler.Add(worker.Job{
 		Name:     "eta-pelletstock",
 		Interval: cfg.EtaPelletstockInterval,
-		Run:      etaCollector.SyncPelletStock,
+		Run: func(ctx context.Context) error {
+			items, err := etaCollector.SyncPelletStock(ctx)
+			if err != nil {
+				return err
+			}
+
+			return uploader.Upload(ctx, agent.ToPayloads(items))
+		},
 	})
 	scheduler.Add(worker.Job{
 		Name:     "eta-outsidetemp",
 		Interval: cfg.EtaOutsidetempPollInterval,
-		Run:      etaCollector.SyncOutsideTemp,
+		Run: func(ctx context.Context) error {
+			items, err := etaCollector.SyncOutsideTemp(ctx)
+			if err != nil {
+				return err
+			}
+
+			return uploader.Upload(ctx, agent.ToPayloads(items))
+		},
 	})
 	scheduler.Start(ctx)
 

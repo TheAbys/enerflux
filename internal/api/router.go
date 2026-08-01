@@ -19,6 +19,7 @@ func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.Metri
 		{
 			measurements.GET("", m.GetAll)
 			measurements.GET("/:id", m.GetLatest)
+			measurements.POST("", m.CreateMultiple)
 		}
 
 		metrics := v1.Group("/metrics")

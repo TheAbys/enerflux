@@ -3,10 +3,12 @@ package measurements
 import "time"
 
 type Measurement struct {
-	ID     int
-	TS     time.Time
-	Type   string
-	Value  float64
-	Unit   string
-	Source string
+	ID     int       `json:"id"`
+	TS     time.Time `json:"ts"`
+	Type   string    `json:"type"`
+	Value  float64   `json:"value"`
+	Unit   string    `json:"unit"`
+	Source string    `json:"source"`
 }
+
+type MeasurementPayload Measurement

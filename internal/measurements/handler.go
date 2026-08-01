@@ -48,26 +48,35 @@ func (h *MeasurementHandler) GetLatest(c *gin.Context) {
 	c.JSON(200, data)
 }
 
-func (h *MeasurementHandler) Create(c *gin.Context) {
-	var req CreateMeasurementRequest
+func (h *MeasurementHandler) CreateMultiple(c *gin.Context) {
+	var payload []MeasurementPayload
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	err := h.Service.Create(Measurement{
-		TS:     req.TS,
-		Type:   req.Type,
-		Value:  req.Value,
-		Unit:   req.Unit,
-		Source: req.Source,
-	})
+	measurements := ToMeasurements(payload)
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	// TODO do one big insert instead of multiple small ones?
+	for _, measurement := range measurements {
+		err := h.Service.Create(measurement)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	c.JSON(http.StatusCreated, gin.H{"status": "ok"})
+}
+
+func ToMeasurements(payloads []MeasurementPayload) []Measurement {
+	items := make([]Measurement, len(payloads))
+
+	for i := range payloads {
+		items[i] = Measurement(payloads[i])
+	}
+
+	return items
 }

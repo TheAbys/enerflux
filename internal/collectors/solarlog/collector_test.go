@@ -56,7 +56,7 @@ func TestSolarLogCollector_Sync(t *testing.T) {
 
 	svc := NewSolarLogCollector(logger.New(), fetcher, parser, repo)
 
-	err := svc.Sync(context.Background())
+	_, err := svc.Sync(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
