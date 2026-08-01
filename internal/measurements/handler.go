@@ -1,7 +1,9 @@
 package measurements
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,12 +25,14 @@ type CreateMeasurementRequest struct {
 	Source string    `json:"source"`
 }
 
-func (h *MeasurementHandler) GetAll(c *gin.Context) {
+func (h *MeasurementHandler) List(c *gin.Context) {
+	options, err := parseQueryOptions(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-	// TODO: parse query param and build filter
-	filter := MeasurementFilter{}
-
-	data, err := h.Service.GetAll(c.Request.Context(), filter)
+	data, err := h.Service.Find(c.Request.Context(), options)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -38,8 +42,13 @@ func (h *MeasurementHandler) GetAll(c *gin.Context) {
 }
 
 func (h *MeasurementHandler) GetLatest(c *gin.Context) {
+	options, err := parseQueryOptions(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-	data, err := h.Service.GetLatest()
+	data, err := h.Service.FindLatest(c.Request.Context(), options.Filter)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -48,7 +57,7 @@ func (h *MeasurementHandler) GetLatest(c *gin.Context) {
 	c.JSON(200, data)
 }
 
-func (h *MeasurementHandler) CreateMultiple(c *gin.Context) {
+func (h *MeasurementHandler) CreateMany(c *gin.Context) {
 	var payload []MeasurementPayload
 
 	if err := c.ShouldBindJSON(&payload); err != nil {
@@ -58,14 +67,11 @@ func (h *MeasurementHandler) CreateMultiple(c *gin.Context) {
 
 	measurements := ToMeasurements(payload)
 
-	// TODO do one big insert instead of multiple small ones?
-	for _, measurement := range measurements {
-		err := h.Service.Create(measurement)
+	err := h.Service.InsertMany(c.Request.Context(), measurements)
 
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"status": "ok"})
@@ -79,4 +85,47 @@ func ToMeasurements(payloads []MeasurementPayload) []Measurement {
 	}
 
 	return items
+}
+
+func parseQueryOptions(c *gin.Context) (QueryOptions, error) {
+	options := QueryOptions{
+		Filter: Filter{
+			Types:   c.QueryArray("type"),
+			Sources: c.QueryArray("source"),
+		},
+	}
+
+	if value := c.Query("limit"); value != "" {
+		limit, err := strconv.Atoi(value)
+		if err != nil {
+			return QueryOptions{}, fmt.Errorf("invalid limit")
+		}
+		options.Limit = limit
+	}
+
+	if value := c.Query("offset"); value != "" {
+		offset, err := strconv.Atoi(value)
+		if err != nil {
+			return QueryOptions{}, fmt.Errorf("invalid offset")
+		}
+		options.Offset = offset
+	}
+
+	if value := c.Query("from"); value != "" {
+		from, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return QueryOptions{}, fmt.Errorf("invalid from timestamp")
+		}
+		options.Filter.From = &from
+	}
+
+	if value := c.Query("to"); value != "" {
+		to, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return QueryOptions{}, fmt.Errorf("invalid to timestamp")
+		}
+		options.Filter.To = &to
+	}
+
+	return options, nil
 }

@@ -6,7 +6,6 @@ import (
 
 	"github.com/theabys/enerflux/internal/logger"
 	"github.com/theabys/enerflux/internal/measurements"
-	filter "github.com/theabys/enerflux/internal/measurements"
 )
 
 type mockFetcher struct{}
@@ -29,21 +28,17 @@ type mockRepo struct {
 	measurements []measurements.Measurement
 }
 
-func (repo *mockRepo) Insert(m measurements.Measurement) error {
+func (repo *mockRepo) InsertMany(ctx context.Context, m []measurements.Measurement) error {
 	repo.called++
-	repo.measurements = append(repo.measurements, m)
+	repo.measurements = append(repo.measurements, m...)
 	return nil
 }
 
-func (repo *mockRepo) List(limit int) ([]measurements.Measurement, error) {
+func (repo *mockRepo) FindLatest(ctx context.Context) (*measurements.Measurement, error) {
 	return nil, nil
 }
 
-func (repo *mockRepo) GetLatest() (*measurements.Measurement, error) {
-	return nil, nil
-}
-
-func (repo *mockRepo) QueryMeasurements(ctx context.Context, filter filter.MeasurementFilter) ([]measurements.Measurement, error) {
+func (repo *mockRepo) Find(ctx context.Context, queryOptions measurements.QueryOptions) ([]measurements.Measurement, error) {
 	return nil, nil
 }
 

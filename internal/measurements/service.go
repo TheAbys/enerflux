@@ -14,20 +14,45 @@ func NewMeasurementService(logger *slog.Logger, repo MeasurementRepository) *Mea
 	return &MeasurementService{Logger: logger.With("component", "measurement-service"), Repo: repo}
 }
 
-func (s *MeasurementService) Create(m Measurement) error {
+func (s *MeasurementService) Insert(ctx context.Context, measurement Measurement) error {
 	// hier später Validierung / Business Logic
-	s.Logger.Info("insert measurement", "model", m)
-	return s.Repo.Insert(m)
+	s.Logger.Info("insert measurement", "model", measurement)
+	return s.InsertMany(ctx, []Measurement{measurement})
 }
 
-func (s *MeasurementService) GetAll(ctx context.Context, filter MeasurementFilter) ([]Measurement, error) {
-	if len(filter.Key) == 0 {
-		filter.Key = "default"
+func (s *MeasurementService) InsertMany(ctx context.Context, measurements []Measurement) error {
+	s.Logger.Info("insert many measurements", "model", measurements)
+	return s.Repo.InsertMany(ctx, measurements)
+}
+
+func (s *MeasurementService) Find(ctx context.Context, options QueryOptions) ([]Measurement, error) {
+	if options.Limit == 0 {
+		options.Limit = 100
 	}
 
-	return s.Repo.QueryMeasurements(ctx, filter)
+	return s.Repo.Find(ctx, options)
 }
 
-func (s *MeasurementService) GetLatest() (*Measurement, error) {
-	return s.Repo.GetLatest()
+func (s *MeasurementService) FindLatest(ctx context.Context, filter Filter) (*Measurement, error) {
+
+	measurements, err := s.Repo.Find(ctx, QueryOptions{
+		Filter: filter,
+		Sort: []Sort{
+			{
+				Field:     SortByTimestamp,
+				Direction: SortDescending,
+			},
+		},
+		Limit: 1,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(measurements) == 0 {
+		return nil, nil
+	}
+
+	return &measurements[0], nil
 }

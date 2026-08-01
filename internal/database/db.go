@@ -28,3 +28,7 @@ func (db *DB) Exec(ctx context.Context, sql string, args ...any) (pgconn.Command
 func (db *DB) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	return db.pool.Query(ctx, sql, args...)
 }
+
+func (db *DB) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
+	return db.pool.CopyFrom(ctx, tableName, columnNames, rowSrc)
+}

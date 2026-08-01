@@ -16,12 +16,23 @@ func NewMetricService(logger *slog.Logger, service *measurements.MeasurementServ
 	return &MetricService{Logger: logger.With("component", "metrics-service"), MeasurementService: service}
 }
 
-func (s *MetricService) GetMetrics(ctx context.Context, filter measurements.MeasurementFilter) ([]Metric, error) {
-	if len(filter.Key) == 0 {
-		filter.Key = "default"
-	}
-
-	measurements, err := s.MeasurementService.GetAll(ctx, filter)
+func (s *MetricService) GetMetrics(ctx context.Context, options QueryOptions) ([]Metric, error) {
+	measurements, err := s.MeasurementService.Find(
+		ctx,
+		measurements.QueryOptions{
+			Filter: measurements.Filter{
+				Types: []string{options.Filter.Key},
+			},
+			Sort: []measurements.Sort{
+				{
+					Field:     measurements.SortByTimestamp,
+					Direction: measurements.SortAscending,
+				},
+			},
+			Limit:  options.Limit,
+			Offset: options.Offset,
+		},
+	)
 
 	if err != nil {
 		return nil, err
