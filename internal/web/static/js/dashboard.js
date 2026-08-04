@@ -4,7 +4,7 @@ let reloadTimer = null;
 async function loadMetric(canvasId, metricKey) {
     currentMetric = metricKey;
 
-    const response = await fetch(`/api/v1/metrics/?key=${encodeURIComponent(metricKey)}&limit=50`);
+    const response = await fetch(`/api/v1/metrics/?key=${encodeURIComponent(metricKey)}&limit=300`);
     const data = await response.json();
 
     renderChart(canvasId, data, metricKey);

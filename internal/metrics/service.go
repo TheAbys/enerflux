@@ -26,7 +26,7 @@ func (s *MetricService) GetMetrics(ctx context.Context, options QueryOptions) ([
 			Sort: []measurements.Sort{
 				{
 					Field:     measurements.SortByTimestamp,
-					Direction: measurements.SortAscending,
+					Direction: measurements.SortDescending,
 				},
 			},
 			Limit:  options.Limit,
