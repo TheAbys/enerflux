@@ -27,6 +27,8 @@ FROM gcr.io/distroless/static-debian12:nonroot AS api
 WORKDIR /app
 
 COPY --from=builder /out/api /app/api
+COPY --from=builder /src/internal/web/templates ./internal/web/templates
+COPY --from=builder /src/internal/web/static ./internal/web/static
 
 USER nonroot:nonroot
 

@@ -3,6 +3,8 @@ package config
 import "time"
 
 type Config struct {
+	ApiUrl                     string
+	ApiPort                    string
 	DatabaseURL                string
 	SolarLogURL                string
 	SolarLogPollInterval       time.Duration
@@ -16,6 +18,9 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
+		ApiUrl:  mustGet("API_URL"),
+		ApiPort: mustGet("API_PORT"),
+
 		DatabaseURL:          mustGet("DATABASE_URL"),
 		SolarLogURL:          mustGet("SOLARLOG_URL"),
 		SolarLogPollInterval: getDuration("SOLARLOG_POLLINTERVAL", 1*time.Minute),

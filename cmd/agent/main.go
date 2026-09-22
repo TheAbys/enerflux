@@ -49,7 +49,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	uploader := agent.NewHTTPUploader("http://localhost:8080/")
+	uploader := agent.NewHTTPUploader(cfg.ApiUrl)
 
 	// Scheduler
 	scheduler := worker.NewScheduler(log)

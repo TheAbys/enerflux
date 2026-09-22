@@ -42,6 +42,6 @@ func main() {
 		dashboardHandler,
 	)
 
-	log.Info("API started", "port", "8080")
-	router.Run(":8080")
+	log.Info("API started", "port", cfg.ApiPort)
+	router.Run(cfg.ApiPort)
 }
