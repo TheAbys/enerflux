@@ -3,6 +3,7 @@ package metrics
 import "time"
 
 type Metric struct {
-	TS    time.Time
-	Value float64
+	TS     time.Time
+	Value  float64
+	Source string
 }

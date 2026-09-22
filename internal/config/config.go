@@ -10,6 +10,8 @@ type Config struct {
 	EtaPelletstockInterval     time.Duration
 	EtaOutsidetempUrl          string
 	EtaOutsidetempPollInterval time.Duration
+	MQTTBrokerURL              string
+	MQTTClientID               string
 }
 
 func Load() *Config {
@@ -22,5 +24,8 @@ func Load() *Config {
 		EtaPelletstockInterval:     getDuration("ETA_PELLETSTOCK_POLLINTERVAL", 1*time.Minute),
 		EtaOutsidetempUrl:          mustGet("ETA_OUTSIDETEMP_URL"),
 		EtaOutsidetempPollInterval: getDuration("ETA_OUTSIDETEMP_POLLINTERVAL", 1*time.Minute),
+
+		MQTTBrokerURL: mustGet("MQTT_BROKER_URL"),
+		MQTTClientID:  mustGet("MQTT_CLIENT_ID"),
 	}
 }

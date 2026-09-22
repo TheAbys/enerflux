@@ -12,6 +12,7 @@ require (
 	github.com/bytedance/sonic v1.15.2 // indirect
 	github.com/bytedance/sonic/loader v0.5.2 // indirect
 	github.com/cloudwego/base64x v0.1.7 // indirect
+	github.com/eclipse/paho.mqtt.golang v1.5.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.15 // indirect
 	github.com/gin-contrib/sse v1.1.1 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
@@ -19,6 +20,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.3 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect

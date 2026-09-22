@@ -41,8 +41,9 @@ func (s *MetricService) GetMetrics(ctx context.Context, options QueryOptions) ([
 	metrics := []Metric{}
 	for _, measurement := range measurements {
 		metrics = append(metrics, Metric{
-			TS:    measurement.TS,
-			Value: measurement.Value,
+			TS:     measurement.TS,
+			Value:  measurement.Value,
+			Source: measurement.Source,
 		})
 	}
 

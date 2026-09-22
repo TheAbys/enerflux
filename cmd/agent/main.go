@@ -8,6 +8,7 @@ import (
 
 	"github.com/theabys/enerflux/internal/agent"
 	"github.com/theabys/enerflux/internal/collectors/eta"
+	"github.com/theabys/enerflux/internal/collectors/shelly"
 	"github.com/theabys/enerflux/internal/collectors/solarlog"
 	"github.com/theabys/enerflux/internal/config"
 	"github.com/theabys/enerflux/internal/database"
@@ -36,13 +37,13 @@ func main() {
 	// Parser
 	solarlogParser := solarlog.NewParser()
 
-	// Service
+	// Collector
 	solarLogCollector := solarlog.NewSolarLogCollector(log, solarlogClient, solarlogParser, measurementRepo)
 
 	//Parser
 	etaParser := eta.NewParser()
 
-	// Service
+	// Collector
 	etaCollector := eta.NewEtaCollector(log, eta.NewClient(cfg.EtaPelletstockUrl), eta.NewClient(cfg.EtaOutsidetempUrl), etaParser, measurementRepo)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -89,6 +90,19 @@ func main() {
 		},
 	})
 	scheduler.Start(ctx)
+
+	shellyClient := shelly.NewClient(cfg.MQTTBrokerURL, cfg.MQTTClientID)
+	if err := shellyClient.Connect(); err != nil {
+		log.Error("failed to connect to mqtt broker", "error", err)
+		os.Exit(1)
+	}
+	defer shellyClient.Close()
+	shellyCollector := shelly.NewShellyCollector(log, shellyClient, measurementRepo)
+
+	if err := shellyCollector.Start(ctx); err != nil {
+		log.Error("failed to start shelly collector", "error", err)
+		os.Exit(1)
+	}
 
 	// Wait for termination signal
 	sig := make(chan os.Signal, 1)

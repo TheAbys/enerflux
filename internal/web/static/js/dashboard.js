@@ -19,7 +19,7 @@ function startAutoReload(canvasId) {
         if (currentMetric) {
             loadMetric(canvasId, currentMetric);
         }
-    }, 1000);
+    }, 60000);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -37,11 +37,29 @@ document.addEventListener("DOMContentLoaded", () => {
 let charts = {};
 
 function renderChart(canvasId, data, title) {
-    const labels = data.map(x =>
-        new Date(x.TS).toLocaleTimeString()
+    const timestamps = [...new Set(data.map(x => x.TS))]
+        .sort((a, b) => new Date(a) - new Date(b));
+
+    const labels = timestamps.map(ts =>
+        new Date(ts).toLocaleTimeString()
     );
 
-    const values = data.map(x => x.Value);
+    const sources = [...new Set(data.map(x => x.Source))];
+
+    const datasets = sources.map(source => {
+        const valuesByTimestamp = new Map(
+            data
+                .filter(x => x.Source === source)
+                .map(x => [x.TS, x.Value])
+        );
+
+        return {
+            label: source,
+            data: timestamps.map(ts => valuesByTimestamp.get(ts) ?? null),
+            tension: 0.2,
+            spanGaps: true
+        };
+    });
 
     const ctx = document.getElementById(canvasId);
 
@@ -53,11 +71,15 @@ function renderChart(canvasId, data, title) {
         type: "line",
         data: {
             labels,
-            datasets: [{
-                label: title,
-                data: values,
-                tension: 0.2
-            }]
+            datasets
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: title
+                }
+            }
         }
     });
 }
