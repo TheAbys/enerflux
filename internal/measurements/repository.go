@@ -23,6 +23,14 @@ func NewMeasurementRepo(db *database.DB) *MeasurementRepo {
 	return &MeasurementRepo{Db: db}
 }
 
+func (r *MeasurementRepo) EnsureSchema(ctx context.Context) error {
+	_, err := r.Db.Exec(ctx, `ALTER TABLE measurements ADD COLUMN IF NOT EXISTS note TEXT`)
+	if err != nil {
+		return fmt.Errorf("ensure measurement notes column: %w", err)
+	}
+	return nil
+}
+
 func (r *MeasurementRepo) InsertMany(ctx context.Context, measurements []Measurement) error {
 	if len(measurements) == 0 {
 		return nil
@@ -32,18 +40,19 @@ func (r *MeasurementRepo) InsertMany(ctx context.Context, measurements []Measure
 
 	for i, item := range measurements {
 		rows[i] = []any{
-			item.TS,
+			item.TS.In(time.Local),
 			item.Type,
 			item.Value,
 			item.Unit,
 			item.Source,
+			item.Note,
 		}
 	}
 
 	_, err := r.Db.CopyFrom(
 		ctx,
 		pgx.Identifier{"measurements"},
-		[]string{"ts", "type", "value", "unit", "source"},
+		[]string{"ts", "type", "value", "unit", "source", "note"},
 		pgx.CopyFromRows(rows),
 	)
 	if err != nil {
@@ -54,7 +63,7 @@ func (r *MeasurementRepo) InsertMany(ctx context.Context, measurements []Measure
 }
 func (r *MeasurementRepo) Find(ctx context.Context, options QueryOptions) ([]Measurement, error) {
 	query := `
-		SELECT ts, type, value, unit, source
+		SELECT ts, type, value, unit, source, COALESCE(note, '')
 		FROM measurements
 		WHERE 1 = 1
 	`
@@ -138,6 +147,7 @@ func (r *MeasurementRepo) Find(ctx context.Context, options QueryOptions) ([]Mea
 			&item.Value,
 			&item.Unit,
 			&item.Source,
+			&item.Note,
 		); err != nil {
 			return nil, fmt.Errorf("scan measurement: %w", err)
 		}

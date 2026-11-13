@@ -9,6 +9,7 @@ type Measurement struct {
 	Value  float64   `json:"value"`
 	Unit   string    `json:"unit"`
 	Source string    `json:"source"`
+	Note   string    `json:"note,omitempty"`
 }
 
 type MeasurementPayload Measurement

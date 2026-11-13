@@ -101,8 +101,7 @@ kubectl create configmap enerflux-stack-config \
   --namespace "$NAMESPACE" \
   --from-file=mosquitto.conf="$PROJECT_ROOT/docker/mosquitto/mosquitto.conf" \
   --from-file=migrate.sh="$SCRIPT_DIR/migrate.sh" \
-  --from-file=001_create_measurements.sql="$PROJECT_ROOT/migrations/001_create_measurements.sql" \
-  --from-file=002_alter_measurements.sql="$PROJECT_ROOT/migrations/002_alter_measurements.sql" \
+  --from-file="$PROJECT_ROOT/migrations" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl apply --namespace "$NAMESPACE" -f "$SCRIPT_DIR/infrastructure.yaml"

@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS measurements (
     type TEXT NOT NULL,
     value DOUBLE PRECISION NOT NULL,
     unit TEXT NOT NULL,
-    source TEXT
+    source TEXT,
+    note TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_measurements_ts ON measurements(ts);

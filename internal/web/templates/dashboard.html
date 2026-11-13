@@ -30,6 +30,14 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1 1 0 0 1-1 1h-5v-6h-5v6h-5a1 1 0 0 1-1-1v-9Z"/></svg>
                     <span>Overview</span>
                 </a>
+                <a class="nav-item" href="/settings">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z"/><path d="m19.4 13.5 1.1.9-1.5 2.6-1.4-.5a7.8 7.8 0 0 1-1.5.9l-.2 1.5h-3l-.3-1.5a7.8 7.8 0 0 1-1.5-.9l-1.4.5-1.5-2.6 1.1-.9a7.6 7.6 0 0 1 0-1.8l-1.1-.9 1.5-2.6 1.4.5a7.8 7.8 0 0 1 1.5-.9l.3-1.5h3l.2 1.5a7.8 7.8 0 0 1 1.5.9l1.4-.5 1.5 2.6-1.1.9a7.6 7.6 0 0 1 0 1.8Z"/></svg>
+                    <span>Configuration</span>
+                </a>
+                <a class="nav-item" href="/pellets">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c2.8 3.5 5.2 6.2 5.2 10a5.2 5.2 0 0 1-10.4 0C6.8 9.2 9.2 6.5 12 3Z"/><path d="M9.7 14.7a2.5 2.5 0 0 0 2.5 2.5"/></svg>
+                    <span>Pellets</span>
+                </a>
             </nav>
 
             <div class="sidebar-spacer"></div>
@@ -54,7 +62,7 @@
                 <div>
                     <p class="eyebrow">YOUR ENERGY, AT A GLANCE</p>
                     <h1 id="page-title">Energy overview</h1>
-                    <p class="page-subtitle">Track live power, consumption and heating across your connected sources.</p>
+                    <p class="page-subtitle">Track live power, consumption, heating and manual water meter readings.</p>
                 </div>
                 <button id="refresh-button" class="button button-secondary" type="button">
                     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.3 7.4A6.5 6.5 0 0 0 4.8 5.7L3.2 7.2M3.2 7.2V3.8m0 3.4h3.4M3.7 12.6a6.5 6.5 0 0 0 11.5 1.7l1.6-1.5m0 0v3.4m0-3.4h-3.4"/></svg>
@@ -81,6 +89,9 @@
                             <option value="energy.yield.today">Solar yield today</option>
                             <option value="energy.yield.yesterday">Solar yield yesterday</option>
                         </optgroup>
+                        <optgroup label="Water">
+                            <option value="water.meter.reading">Water meter reading</option>
+                        </optgroup>
                     </select>
                 </label>
 
@@ -95,6 +106,8 @@
                         <button type="button" class="range-option" data-range="86400" aria-pressed="false">24h</button>
                         <button type="button" class="range-option" data-range="259200" aria-pressed="false">3d</button>
                         <button type="button" class="range-option" data-range="604800" aria-pressed="false">7d</button>
+                        <button type="button" class="range-option" data-range="2592000" aria-pressed="false">30d</button>
+                        <button type="button" class="range-option" data-range="7776000" aria-pressed="false">90d</button>
                     </div>
                 </div>
 
@@ -162,6 +175,35 @@
                         </div>
                     </details>
                 </article>
+
+                <article id="water-summary-card" class="summary-card" hidden>
+                    <div class="summary-card-top">
+                        <span class="summary-label">WATER USED</span>
+                        <span class="summary-icon icon-blue" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M12 3.2C9.3 7.1 6.2 10.4 6.2 14a5.8 5.8 0 0 0 11.6 0c0-3.6-3.1-6.9-5.8-10.8Z"/><path d="M9.2 15.4a2.9 2.9 0 0 0 2.9 2.9"/></svg>
+                        </span>
+                    </div>
+                    <div id="water-value" class="summary-value">—</div>
+                    <div id="water-caption" class="summary-caption">Enter meter readings to calculate usage</div>
+                </article>
+            </section>
+
+            <section class="water-entry-panel" aria-labelledby="water-entry-title">
+                <div class="water-entry-copy">
+                    <p class="eyebrow">MANUAL METER CHECK</p>
+                    <h2 id="water-entry-title">Add water meter reading</h2>
+                    <p>Enter the total shown on your meter. EnerFlux will compare readings to calculate water used between checks.</p>
+                </div>
+                <form id="water-entry-form" class="water-entry-form">
+                    <label for="water-reading-time">Reading time
+                        <input id="water-reading-time" name="ts" type="datetime-local" required>
+                    </label>
+                    <label for="water-reading-value">Meter total (m³)
+                        <input id="water-reading-value" name="value" type="number" min="0" step="0.001" inputmode="decimal" placeholder="e.g. 128.450" required>
+                    </label>
+                    <button class="button button-primary" type="submit">Save reading</button>
+                </form>
+                <p id="water-entry-status" class="water-entry-status" role="status" aria-live="polite" hidden></p>
             </section>
 
             <section class="chart-panel" aria-labelledby="chart-title">

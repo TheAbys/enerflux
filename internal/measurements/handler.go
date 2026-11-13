@@ -23,6 +23,7 @@ type CreateMeasurementRequest struct {
 	Value  float64   `json:"value"`
 	Unit   string    `json:"unit"`
 	Source string    `json:"source"`
+	Note   string    `json:"note,omitempty"`
 }
 
 func (h *MeasurementHandler) List(c *gin.Context) {

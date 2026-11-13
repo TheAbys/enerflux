@@ -6,9 +6,10 @@ import (
 	"github.com/theabys/enerflux/internal/health"
 	"github.com/theabys/enerflux/internal/measurements"
 	"github.com/theabys/enerflux/internal/metrics"
+	"github.com/theabys/enerflux/internal/sourceconfig"
 )
 
-func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.MetricHandler, h *health.HealthHandler, d *dashboard.DashboardHandler) *gin.Engine {
+func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.MetricHandler, sourceConfigHandler *sourceconfig.Handler, h *health.HealthHandler, d *dashboard.DashboardHandler) *gin.Engine {
 	router := gin.Default()
 	router.LoadHTMLGlob("internal/web/templates/*")
 	router.Static("/static", "./internal/web/static")
@@ -27,6 +28,12 @@ func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.Metri
 			metrics.GET("/", metricsHandler.GetMetrics)
 		}
 
+		configuration := v1.Group("/configuration")
+		{
+			configuration.GET("/sources", sourceConfigHandler.Get)
+			configuration.PUT("/sources", sourceConfigHandler.Save)
+		}
+
 		health := v1.Group("/health")
 		{
 			health.GET("", h.Get)
@@ -34,6 +41,8 @@ func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.Metri
 	}
 
 	router.GET("/", d.Index)
+	router.GET("/pellets", d.Pellets)
+	router.GET("/settings", d.Settings)
 
 	return router
 }

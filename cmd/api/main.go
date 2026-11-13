@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/theabys/enerflux/internal/api"
 	"github.com/theabys/enerflux/internal/config"
 	"github.com/theabys/enerflux/internal/dashboard"
@@ -9,6 +11,7 @@ import (
 	"github.com/theabys/enerflux/internal/logger"
 	"github.com/theabys/enerflux/internal/measurements"
 	"github.com/theabys/enerflux/internal/metrics"
+	"github.com/theabys/enerflux/internal/sourceconfig"
 )
 
 func main() {
@@ -20,10 +23,22 @@ func main() {
 	db, err := database.NewDB(cfg.DatabaseURL)
 	if err != nil {
 		log.Error("connection to database not possible", "error", err)
+		return
 	}
+
+	sourceConfigRepository := sourceconfig.NewRepository(db)
+	if err := sourceConfigRepository.EnsureSchema(context.Background()); err != nil {
+		log.Error("source configuration storage not available", "error", err)
+		return
+	}
+	sourceConfigService := sourceconfig.NewService(sourceConfigRepository, sourceconfig.FromConfig(cfg))
 
 	// Repo
 	measurementRepo := measurements.NewMeasurementRepo(db)
+	if err := measurementRepo.EnsureSchema(context.Background()); err != nil {
+		log.Error("measurement storage not available", "error", err)
+		return
+	}
 
 	measurementService := measurements.NewMeasurementService(log, measurementRepo)
 
@@ -32,12 +47,14 @@ func main() {
 	measurementHandler := measurements.NewMeasurementHandler(measurementService)
 	healthHandler := health.NewHealthHandler()
 	metricHandler := metrics.NewMetricHandler(metricService)
+	sourceConfigHandler := sourceconfig.NewHandler(sourceConfigService)
 	dashboardHandler := dashboard.NewDashboardHandler()
 
 	// API
 	router := api.NewRouter(
 		measurementHandler,
 		metricHandler,
+		sourceConfigHandler,
 		healthHandler,
 		dashboardHandler,
 	)

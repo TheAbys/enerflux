@@ -7,7 +7,8 @@ const METRICS = {
     "climate.temperature.outside": { label: "Outside temperature", group: "Heating & climate", unit: "°C" },
     "device.energy.total": { label: "Device energy total", group: "Energy", unit: "Wh" },
     "energy.yield.today": { label: "Solar yield today", group: "Energy", unit: "Wh" },
-    "energy.yield.yesterday": { label: "Solar yield yesterday", group: "Energy", unit: "Wh" }
+    "energy.yield.yesterday": { label: "Solar yield yesterday", group: "Energy", unit: "Wh" },
+    "water.meter.reading": { label: "Water meter reading", group: "Water", unit: "m³" }
 };
 
 const SERIES_COLORS = ["#159b83", "#5d82d8", "#df9f35", "#916ce0", "#df6e74", "#2da4b9"];
@@ -29,7 +30,10 @@ function formatNumber(value, maximumFractionDigits = 2) {
 function formatValue(value, unit = "") {
     if (!Number.isFinite(Number(value))) return "—";
     const numeric = Number(value);
-    const digits = Math.abs(numeric) < 10 && !Number.isInteger(numeric) ? 2 : 1;
+    const normalizedUnit = String(unit).trim().toLowerCase();
+    const digits = normalizedUnit === "m³" || normalizedUnit === "m3"
+        ? 3
+        : Math.abs(numeric) < 10 && !Number.isInteger(numeric) ? 2 : 1;
     return `${formatNumber(numeric, digits)}${unit ? ` ${unit}` : ""}`;
 }
 
@@ -82,6 +86,18 @@ async function fetchMetric(key, from, to) {
     }
     const rows = await response.json();
     return Array.isArray(rows) ? rows.sort((a, b) => new Date(a.TS) - new Date(b.TS)) : [];
+}
+
+async function fetchLatestWaterReadingBefore(timestamp) {
+    const query = new URLSearchParams({
+        type: "water.meter.reading",
+        to: new Date(timestamp).toISOString()
+    });
+    const response = await fetch(`/api/v1/measurements/latest?${query.toString()}`, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error("Could not load the previous water meter reading.");
+    const reading = await response.json();
+    if (!reading) return [];
+    return [{ TS: reading.ts, Value: reading.value, Unit: reading.unit, Source: reading.source }];
 }
 
 function groupBySource(points) {
@@ -168,7 +184,7 @@ function renderChart(points, key, range) {
                     display: groups.size > 1,
                     position: "bottom",
                     align: "start",
-                    labels: { usePointStyle: true, pointStyle: "circle", boxWidth: 7, boxHeight: 7, padding: 17, color: "#788681", font: { family: "DM Sans", size: 10 } }
+                    labels: { usePointStyle: true, pointStyle: "circle", boxWidth: 7, boxHeight: 7, padding: 17, color: "#788681", font: { family: "DM Sans", size: 12 } }
                 },
                 tooltip: {
                     backgroundColor: "#173632",
@@ -196,7 +212,7 @@ function renderChart(points, key, range) {
                         maxTicksLimit: 8,
                         maxRotation: 0,
                         color: "#93a09a",
-                        font: { family: "DM Sans", size: 9 },
+                        font: { family: "DM Sans", size: 11 },
                         callback: value => formatAxisTimestamp(Number(value), duration)
                     }
                 },
@@ -208,7 +224,7 @@ function renderChart(points, key, range) {
                         maxTicksLimit: 6,
                         padding: 9,
                         color: "#93a09a",
-                        font: { family: "DM Sans", size: 9 },
+                        font: { family: "DM Sans", size: 11 },
                         callback: value => `${formatNumber(Number(value), 1)}${unit ? ` ${unit}` : ""}`
                     }
                 }
@@ -350,6 +366,39 @@ function updatePelletCard(points, range) {
         : "Need stock readings across this time range";
 }
 
+function calculateWaterUse(points, from, to) {
+    const readings = [...points].sort((a, b) => new Date(a.TS) - new Date(b.TS));
+    let used = 0;
+    let intervals = 0;
+    let unit = readings.find(point => point.Unit)?.Unit || "m³";
+
+    for (let index = 1; index < readings.length; index += 1) {
+        const left = readings[index - 1];
+        const right = readings[index];
+        const leftTime = new Date(left.TS).getTime();
+        const rightTime = new Date(right.TS).getTime();
+        if (leftTime < from || rightTime > to || rightTime <= leftTime) continue;
+
+        const difference = Number(right.Value) - Number(left.Value);
+        if (!Number.isFinite(difference) || difference < 0) continue;
+        used += difference;
+        intervals += 1;
+    }
+
+    return { used, intervals, readingCount: readings.length, unit };
+}
+
+function updateWaterCard(points, range) {
+    const result = calculateWaterUse(points, range.from, range.to);
+    document.getElementById("water-summary-card").hidden = currentMetricKey() !== "water.meter.reading";
+    document.getElementById("water-value").textContent = result.intervals ? formatValue(result.used, result.unit) : "—";
+    document.getElementById("water-caption").textContent = result.intervals
+        ? `Between ${formatNumber(result.intervals, 0)} complete meter ${result.intervals === 1 ? "interval" : "intervals"} · ${range.label.toLowerCase()}`
+        : result.readingCount < 2
+            ? "Add another reading to calculate water used"
+            : "Choose a wider range to include both readings";
+}
+
 function renderReadings(points) {
     const body = document.getElementById("readings-body");
     const latest = [...points].sort((a, b) => new Date(b.TS) - new Date(a.TS)).slice(0, 10);
@@ -411,12 +460,15 @@ async function refreshDashboard() {
     try {
         const energyPromise = fetchMetric(energyKey, statsFrom, range.to);
         const pelletPromise = fetchMetric(pelletKey, statsFrom, range.to);
+        const previousWaterPromise = selectedKey === "water.meter.reading"
+            ? fetchLatestWaterReadingBefore(range.from)
+            : Promise.resolve([]);
         const selectedPromise = selectedKey === energyKey
             ? energyPromise
             : selectedKey === pelletKey
                 ? pelletPromise
                 : fetchMetric(selectedKey, metricFrom, range.to);
-        const [selectedPoints, energyPoints, pelletPoints] = await Promise.all([selectedPromise, energyPromise, pelletPromise]);
+        const [selectedPoints, energyPoints, pelletPoints, previousWaterPoints] = await Promise.all([selectedPromise, energyPromise, pelletPromise, previousWaterPromise]);
         if (sequence !== requestSequence) return;
         cachedPelletPoints = pelletPoints;
 
@@ -428,6 +480,7 @@ async function refreshDashboard() {
         updateLatest(displayPoints);
         updateEnergyCard(energyPoints, range);
         updatePelletCard(pelletPoints, range);
+        updateWaterCard([...previousWaterPoints, ...selectedPoints], range);
         renderReadings(displayPoints);
         updateRangeFooter(range);
         document.getElementById("last-updated").textContent = `Updated ${new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date())}`;
@@ -449,6 +502,74 @@ function toLocalInputValue(timestamp) {
     const date = new Date(timestamp);
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
     return local.toISOString().slice(0, 16);
+}
+
+function toLocalRFC3339(value) {
+    const date = new Date(value);
+    const pad = part => String(part).padStart(2, "0");
+    const offset = -date.getTimezoneOffset();
+    const sign = offset >= 0 ? "+" : "-";
+    const absoluteOffset = Math.abs(offset);
+    const timezone = `${sign}${pad(Math.floor(absoluteOffset / 60))}:${pad(absoluteOffset % 60)}`;
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00${timezone}`;
+}
+
+async function submitWaterReading(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const timestampInput = document.getElementById("water-reading-time");
+    const valueInput = document.getElementById("water-reading-value");
+    const status = document.getElementById("water-entry-status");
+    const value = Number(valueInput.value);
+    const timestamp = new Date(timestampInput.value);
+
+    if (!Number.isFinite(value) || value < 0 || !Number.isFinite(timestamp.getTime())) {
+        status.dataset.state = "error";
+        status.textContent = "Enter a valid date and a non-negative meter total.";
+        status.hidden = false;
+        return;
+    }
+
+    status.hidden = true;
+    const submitButton = form.querySelector("button[type='submit']");
+    submitButton.disabled = true;
+    try {
+        const response = await fetch("/api/v1/measurements", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify([{
+                ts: toLocalRFC3339(timestampInput.value),
+                type: "water.meter.reading",
+                value,
+                unit: "m³",
+                source: "manual"
+            }])
+        });
+        if (!response.ok) {
+            let message = "Could not save the water reading.";
+            try {
+                const body = await response.json();
+                if (body.error) message = body.error;
+            } catch (_) {
+                // Keep the fallback when the response is not JSON.
+            }
+            throw new Error(message);
+        }
+
+        valueInput.value = "";
+        timestampInput.value = toLocalInputValue(Date.now());
+        document.getElementById("metric").value = "water.meter.reading";
+        status.dataset.state = "success";
+        status.textContent = "Water meter reading saved.";
+        status.hidden = false;
+        refreshDashboard();
+    } catch (error) {
+        status.dataset.state = "error";
+        status.textContent = error.message || "Could not save the water reading.";
+        status.hidden = false;
+    } finally {
+        submitButton.disabled = false;
+    }
 }
 
 function setupControls() {
@@ -501,6 +622,9 @@ function setupControls() {
     });
 
     document.getElementById("metric").addEventListener("change", refreshDashboard);
+    document.getElementById("water-entry-form").addEventListener("submit", submitWaterReading);
+    document.getElementById("water-reading-time").value = toLocalInputValue(Date.now());
+    document.getElementById("water-reading-time").max = toLocalInputValue(Date.now());
     document.getElementById("refresh-button").addEventListener("click", refreshDashboard);
     document.getElementById("auto-refresh").addEventListener("change", setupAutoRefresh);
     document.getElementById("save-capacity").addEventListener("click", () => {

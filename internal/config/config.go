@@ -22,12 +22,12 @@ func Load() *Config {
 		ApiPort: mustGet("API_PORT"),
 
 		DatabaseURL:          mustGet("DATABASE_URL"),
-		SolarLogURL:          mustGet("SOLARLOG_URL"),
+		SolarLogURL:          getEnv("SOLARLOG_URL", ""),
 		SolarLogPollInterval: getDuration("SOLARLOG_POLLINTERVAL", 1*time.Minute),
 
-		EtaPelletstockUrl:          mustGet("ETA_PELLETSTOCK_URL"),
+		EtaPelletstockUrl:          getEnv("ETA_PELLETSTOCK_URL", ""),
 		EtaPelletstockInterval:     getDuration("ETA_PELLETSTOCK_POLLINTERVAL", 1*time.Minute),
-		EtaOutsidetempUrl:          mustGet("ETA_OUTSIDETEMP_URL"),
+		EtaOutsidetempUrl:          getEnv("ETA_OUTSIDETEMP_URL", ""),
 		EtaOutsidetempPollInterval: getDuration("ETA_OUTSIDETEMP_POLLINTERVAL", 1*time.Minute),
 
 		MQTTBrokerURL: mustGet("MQTT_BROKER_URL"),

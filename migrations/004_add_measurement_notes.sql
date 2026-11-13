@@ -1,0 +1,2 @@
+ALTER TABLE measurements
+    ADD COLUMN IF NOT EXISTS note TEXT;
