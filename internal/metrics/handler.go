@@ -3,6 +3,7 @@ package metrics
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,10 +18,12 @@ func NewMetricHandler(s *MetricService) *MetricHandler {
 
 func (h *MetricHandler) GetMetrics(c *gin.Context) {
 	options, err := parseQueryOptions(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
 
-	// TODO solve in parsing function
-	key := c.Query("key")
-	if len(key) == 0 {
+	if len(options.Filter.Key) == 0 {
 		c.JSON(400, gin.H{"error": "missing or empty key query parameter"})
 		return
 	}
@@ -55,6 +58,26 @@ func parseQueryOptions(c *gin.Context) (QueryOptions, error) {
 			return QueryOptions{}, fmt.Errorf("invalid offset")
 		}
 		options.Offset = offset
+	}
+
+	if value := c.Query("from"); value != "" {
+		from, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return QueryOptions{}, fmt.Errorf("invalid from timestamp: expected RFC3339")
+		}
+		options.Filter.From = &from
+	}
+
+	if value := c.Query("to"); value != "" {
+		to, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return QueryOptions{}, fmt.Errorf("invalid to timestamp: expected RFC3339")
+		}
+		options.Filter.To = &to
+	}
+
+	if options.Filter.From != nil && options.Filter.To != nil && options.Filter.From.After(*options.Filter.To) {
+		return QueryOptions{}, fmt.Errorf("from timestamp must not be after to timestamp")
 	}
 
 	return options, nil

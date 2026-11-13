@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/theabys/enerflux/internal/database"
@@ -75,13 +76,14 @@ func (r *MeasurementRepo) Find(ctx context.Context, options QueryOptions) ([]Mea
 
 	if options.Filter.From != nil {
 		query += fmt.Sprintf(" AND ts >= $%d", argIndex)
-		args = append(args, *options.Filter.From)
+		// The column stores local wall-clock time without a zone.
+		args = append(args, options.Filter.From.In(time.Local))
 		argIndex++
 	}
 
 	if options.Filter.To != nil {
 		query += fmt.Sprintf(" AND ts <= $%d", argIndex)
-		args = append(args, *options.Filter.To)
+		args = append(args, options.Filter.To.In(time.Local))
 		argIndex++
 	}
 

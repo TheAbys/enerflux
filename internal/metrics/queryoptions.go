@@ -1,7 +1,11 @@
 package metrics
 
+import "time"
+
 type Filter struct {
-	Key string
+	Key  string
+	From *time.Time
+	To   *time.Time
 }
 
 type QueryOptions struct {

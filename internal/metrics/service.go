@@ -22,6 +22,8 @@ func (s *MetricService) GetMetrics(ctx context.Context, options QueryOptions) ([
 		measurements.QueryOptions{
 			Filter: measurements.Filter{
 				Types: []string{options.Filter.Key},
+				From:  options.Filter.From,
+				To:    options.Filter.To,
 			},
 			Sort: []measurements.Sort{
 				{
@@ -43,6 +45,7 @@ func (s *MetricService) GetMetrics(ctx context.Context, options QueryOptions) ([
 		metrics = append(metrics, Metric{
 			TS:     measurement.TS,
 			Value:  measurement.Value,
+			Unit:   measurement.Unit,
 			Source: measurement.Source,
 		})
 	}
