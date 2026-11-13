@@ -140,6 +140,10 @@ task test
 task build
 ```
 
+## ☸️ Deploy with k3s
+
+The [k3s deployment folder](./k3s/README.md) includes scripts and Kubernetes manifests for running the API, agent, PostgreSQL, and Mosquitto together.
+
 ---
 
 ## 📦 Project Structure

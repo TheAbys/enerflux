@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: enerflux-api
+  labels:
+    app.kubernetes.io/name: enerflux-api
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      nodePort: ${API_NODE_PORT}
+  selector:
+    app.kubernetes.io/name: enerflux-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enerflux-api
+  labels:
+    app.kubernetes.io/name: enerflux-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: enerflux-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: enerflux-api
+    spec:
+      containers:
+        - name: api
+          image: "${API_IMAGE}"
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: enerflux-app-config
+          env:
+            - name: API_URL
+              value: http://enerflux-api:8080
+            - name: API_PORT
+              value: ":8080"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: enerflux-db-auth
+                  key: DATABASE_URL
+            - name: MQTT_BROKER_URL
+              value: tcp://enerflux-mqtt:1883
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enerflux-agent
+  labels:
+    app.kubernetes.io/name: enerflux-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: enerflux-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: enerflux-agent
+    spec:
+      containers:
+        - name: agent
+          image: "${AGENT_IMAGE}"
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          envFrom:
+            - secretRef:
+                name: enerflux-app-config
+          env:
+            - name: API_URL
+              value: http://enerflux-api:8080
+            - name: API_PORT
+              value: ":8080"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: enerflux-db-auth
+                  key: DATABASE_URL
+            - name: MQTT_BROKER_URL
+              value: tcp://enerflux-mqtt:1883
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

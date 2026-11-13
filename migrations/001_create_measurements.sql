@@ -7,5 +7,5 @@ CREATE TABLE IF NOT EXISTS measurements (
     source TEXT
 );
 
-CREATE INDEX idx_measurements_ts ON measurements(ts);
-CREATE INDEX idx_measurements_type ON measurements(type);
+CREATE INDEX IF NOT EXISTS idx_measurements_ts ON measurements(ts);
+CREATE INDEX IF NOT EXISTS idx_measurements_type ON measurements(type);
