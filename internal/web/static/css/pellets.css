@@ -14,6 +14,8 @@
 .pellet-chart-panel { margin-top: 14px; }
 .pellet-chart-wrap { position: relative; height: 290px; margin: 15px -4px 0 -7px; }
 .pellet-chart-wrap canvas { width: 100% !important; height: 100% !important; }
+.pellet-usage-chart-wrap { position: relative; height: 265px; margin: 15px -4px 0 -7px; }
+.pellet-usage-chart-wrap canvas { width: 100% !important; height: 100% !important; }
 .pellet-lower-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(330px, .85fr); align-items: start; gap: 14px; }
 .pellet-readings-panel { min-width: 0; margin-top: 14px; }
 .pellet-readings-panel table { min-width: 570px; }
@@ -57,6 +59,7 @@
     .pellet-summary-grid .summary-card { min-height: 101px; padding: 13px 15px; }
     .pellet-chart-panel { padding: 15px 13px 11px; }
     .pellet-chart-wrap { height: 245px; margin-top: 12px; }
+    .pellet-usage-chart-wrap { height: 235px; margin-top: 12px; }
     .purchase-panel { padding: 15px 13px; }
     .purchase-two-fields { grid-template-columns: 1fr; gap: 0; }
     .purchase-field input, .purchase-field textarea { font-size: 16px; }

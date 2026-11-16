@@ -1,15 +1,19 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+	"github.com/theabys/enerflux/internal/analytics"
 	"github.com/theabys/enerflux/internal/dashboard"
+	"github.com/theabys/enerflux/internal/domainconfig"
 	"github.com/theabys/enerflux/internal/health"
 	"github.com/theabys/enerflux/internal/measurements"
 	"github.com/theabys/enerflux/internal/metrics"
 	"github.com/theabys/enerflux/internal/sourceconfig"
 )
 
-func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.MetricHandler, sourceConfigHandler *sourceconfig.Handler, h *health.HealthHandler, d *dashboard.DashboardHandler) *gin.Engine {
+func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.MetricHandler, sourceConfigHandler *sourceconfig.Handler, domainConfigHandler *domainconfig.Handler, analyticsHandler *analytics.Handler, h *health.HealthHandler, d *dashboard.DashboardHandler) *gin.Engine {
 	router := gin.Default()
 	router.LoadHTMLGlob("internal/web/templates/*")
 	router.Static("/static", "./internal/web/static")
@@ -32,7 +36,19 @@ func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.Metri
 		{
 			configuration.GET("/sources", sourceConfigHandler.Get)
 			configuration.PUT("/sources", sourceConfigHandler.Save)
+			configuration.GET("/domains", domainConfigHandler.Get)
+			configuration.PUT("/domains", domainConfigHandler.Save)
 		}
+
+		analyticsRoutes := v1.Group("/analytics")
+		{
+			analyticsRoutes.GET("/overview", analyticsHandler.Overview)
+			analyticsRoutes.GET("/water", analyticsHandler.Water)
+			analyticsRoutes.GET("/electricity", analyticsHandler.Electricity)
+			analyticsRoutes.GET("/heating", analyticsHandler.Heating)
+		}
+
+		v1.GET("/integrations/home-assistant/sensors", analyticsHandler.HomeAssistant)
 
 		health := v1.Group("/health")
 		{
@@ -41,7 +57,10 @@ func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.Metri
 	}
 
 	router.GET("/", d.Index)
-	router.GET("/pellets", d.Pellets)
+	router.GET("/water", d.Water)
+	router.GET("/electricity", d.Electricity)
+	router.GET("/heating", d.Pellets)
+	router.GET("/pellets", func(c *gin.Context) { c.Redirect(http.StatusMovedPermanently, "/heating") })
 	router.GET("/settings", d.Settings)
 
 	return router

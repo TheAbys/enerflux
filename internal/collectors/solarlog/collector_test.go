@@ -51,15 +51,18 @@ func TestSolarLogCollector_Sync(t *testing.T) {
 
 	svc := NewSolarLogCollector(logger.New(), fetcher, parser, repo)
 
-	_, err := svc.Sync(context.Background())
+	items, err := svc.Sync(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if repo.called != 15 {
-		t.Fatalf("expected repo to be called once, got %d", repo.called)
+	if len(items) != 15 {
+		t.Fatalf("expected 15 measurements from SolarLog, got %d", len(items))
 	}
-	if len(repo.measurements) == 15 && repo.measurements[0].Type != "pv.power" {
+	if repo.called != 0 {
+		t.Fatalf("collector should return measurements for the uploader, not persist them directly; called %d times", repo.called)
+	}
+	if items[0].Type != "pv.power" {
 		t.Fatalf("expected first measurement to be pv.power")
 	}
 

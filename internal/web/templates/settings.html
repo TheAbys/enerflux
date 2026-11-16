@@ -10,43 +10,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/domains.css">
     <link rel="stylesheet" href="/static/css/settings.css">
     <script src="/static/js/settings.js" defer></script>
 </head>
 
 <body>
     <div class="app-shell">
-        <aside class="sidebar" aria-label="Main navigation">
-            <a class="brand" href="/" aria-label="EnerFlux home">
-                <span class="brand-mark" aria-hidden="true">
-                    <svg viewBox="0 0 32 32" fill="none"><path d="M17.8 3.5 7.1 17.1h7l-.9 11.4 11.7-15h-7.2l.1-10Z" fill="currentColor"/></svg>
-                </span>
-                <span class="brand-name">enerflux<span>.</span></span>
-            </a>
-
-            <div class="nav-caption">WORKSPACE</div>
-            <nav class="primary-nav">
-                <a class="nav-item" href="/">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5v9a1 1 0 0 1-1 1h-5v-6h-5v6h-5a1 1 0 0 1-1-1v-9Z"/></svg>
-                    <span>Overview</span>
-                </a>
-                <a class="nav-item active" href="/settings" aria-current="page">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z"/><path d="m19.4 13.5 1.1.9-1.5 2.6-1.4-.5a7.8 7.8 0 0 1-1.5.9l-.2 1.5h-3l-.3-1.5a7.8 7.8 0 0 1-1.5-.9l-1.4.5-1.5-2.6 1.1-.9a7.6 7.6 0 0 1 0-1.8l-1.1-.9 1.5-2.6 1.4.5a7.8 7.8 0 0 1 1.5-.9l.3-1.5h3l.2 1.5a7.8 7.8 0 0 1 1.5.9l1.4-.5 1.5 2.6-1.1.9a7.6 7.6 0 0 1 0 1.8Z"/></svg>
-                    <span>Configuration</span>
-                </a>
-                <a class="nav-item" href="/pellets">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c2.8 3.5 5.2 6.2 5.2 10a5.2 5.2 0 0 1-10.4 0C6.8 9.2 9.2 6.5 12 3Z"/><path d="M9.7 14.7a2.5 2.5 0 0 0 2.5 2.5"/></svg>
-                    <span>Pellets</span>
-                </a>
-            </nav>
-
-            <div class="sidebar-spacer"></div>
-            <div class="sidebar-status">
-                <span class="status-dot" aria-hidden="true"></span>
-                <span><strong>EnerFlux</strong><small>Local energy monitor</small></span>
-            </div>
-            <div class="sidebar-footer">ENERGY, IN CLEAR VIEW</div>
-        </aside>
+        {{template "sidebar" .}}
 
         <main class="main-content settings-content">
             <header class="topbar">
@@ -142,6 +113,43 @@
                     </button>
                 </div>
             </form>
+
+            <section class="source-settings-card domain-settings-panel" aria-labelledby="domain-settings-title">
+                <div class="settings-section-heading">
+                    <div><h2 id="domain-settings-title">Resource prices and calculations</h2><p>These domain-specific settings are stored in PostgreSQL and used by EnerFlux calculations.</p></div>
+                    <span class="settings-storage-pill"><span aria-hidden="true"></span>EnerFlux source of truth</span>
+                </div>
+                <p id="domain-settings-error" class="settings-message settings-error" role="alert" hidden></p>
+                <p id="domain-settings-status" class="settings-message settings-success" role="status" aria-live="polite" hidden></p>
+                <form id="domain-settings-form">
+                    <div class="source-settings-grid domain-pricing-grid">
+                        <section class="source-settings-card" aria-labelledby="electricity-price-title">
+                            <div class="source-card-heading"><span class="source-icon source-solar" aria-hidden="true">ϟ</span><div><h3 id="electricity-price-title">Electricity</h3><p>Applied to estimated grid energy in kWh.</p></div></div>
+                            <label class="settings-field" for="electricity-price"><span>Import tariff (EUR / kWh)</span><input id="electricity-price" name="electricityPricePerKWh" type="number" min="0" step="0.0001" inputmode="decimal" placeholder="Not configured"></label>
+                        </section>
+                        <section class="source-settings-card" aria-labelledby="water-price-title">
+                            <div class="source-card-heading"><span class="source-icon source-climate" aria-hidden="true">◉</span><div><h3 id="water-price-title">Water</h3><p>Water and wastewater rates remain separate.</p></div></div>
+                            <label class="settings-field" for="water-price"><span>Water rate (EUR / m³)</span><input id="water-price" name="waterPricePerM3" type="number" min="0" step="0.0001" inputmode="decimal" placeholder="Not configured"></label>
+                            <label class="settings-field" for="wastewater-price"><span>Wastewater rate (EUR / m³)</span><input id="wastewater-price" name="wastewaterPricePerM3" type="number" min="0" step="0.0001" inputmode="decimal" placeholder="Enter 0 if not charged"><small>Both water rates are needed for a complete cost estimate.</small></label>
+                        </section>
+                        <section class="source-settings-card" aria-labelledby="heating-settings-title">
+                            <div class="source-card-heading"><span class="source-icon source-pellet" aria-hidden="true">♨</span><div><h3 id="heating-settings-title">Pellet heating</h3><p>Needed only when ETA stock readings are percentages.</p></div></div>
+                            <label class="settings-field" for="pellet-capacity"><span>Pellet tank capacity (kg)</span><input id="pellet-capacity" name="pelletTankCapacityKg" type="number" min="1" step="1" inputmode="decimal" placeholder="Optional"></label>
+                        </section>
+                        <section class="source-settings-card" aria-labelledby="timezone-title">
+                            <div class="source-card-heading"><span class="source-icon source-climate" aria-hidden="true">◷</span><div><h3 id="timezone-title">Time zone</h3><p>Used for calendar days and daily summaries.</p></div></div>
+                            <label class="settings-field" for="time-zone"><span>IANA time zone</span><input id="time-zone" name="timeZone" type="text" required value="Europe/Berlin" placeholder="Europe/Berlin"></label>
+                        </section>
+                    </div>
+                    <div class="settings-actions"><p>Missing prices leave cost estimates unavailable; EnerFlux never mixes the resource units.</p><button id="save-domain-settings" class="button button-primary" type="submit">Save resource settings</button></div>
+                </form>
+            </section>
+
+            <section class="source-settings-card domain-settings-panel" aria-labelledby="ha-settings-title">
+                <div class="settings-section-heading"><div><h2 id="ha-settings-title">Home Assistant export</h2><p>Read-only calculated values, served by EnerFlux from <code>/api/v1/integrations/home-assistant/sensors</code>.</p></div><span class="settings-storage-pill">Optional read-only export</span></div>
+                <p class="domain-note">Set <code>HOME_ASSISTANT_READ_TOKEN</code> in EnerFlux’s deployment environment or Kubernetes Secret. Generate a long random value, then reference the same token from Home Assistant’s <code>secrets.yaml</code>. EnerFlux reads and compares the token in constant time; it does not store the secret in PostgreSQL. Changing the secret and redeploying rotates it.</p>
+                <div class="settings-actions"><p>The export route returns calculated sensor values only and accepts no writes. Use HTTPS or keep both services on a trusted private network.</p></div>
+            </section>
         </main>
     </div>
 </body>

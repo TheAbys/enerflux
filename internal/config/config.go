@@ -14,6 +14,7 @@ type Config struct {
 	EtaOutsidetempPollInterval time.Duration
 	MQTTBrokerURL              string
 	MQTTClientID               string
+	HomeAssistantReadToken     string
 }
 
 func Load() *Config {
@@ -30,7 +31,8 @@ func Load() *Config {
 		EtaOutsidetempUrl:          getEnv("ETA_OUTSIDETEMP_URL", ""),
 		EtaOutsidetempPollInterval: getDuration("ETA_OUTSIDETEMP_POLLINTERVAL", 1*time.Minute),
 
-		MQTTBrokerURL: mustGet("MQTT_BROKER_URL"),
-		MQTTClientID:  mustGet("MQTT_CLIENT_ID"),
+		MQTTBrokerURL:          mustGet("MQTT_BROKER_URL"),
+		MQTTClientID:           mustGet("MQTT_CLIENT_ID"),
+		HomeAssistantReadToken: getEnv("HOME_ASSISTANT_READ_TOKEN", ""),
 	}
 }

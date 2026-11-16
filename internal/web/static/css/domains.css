@@ -1,0 +1,64 @@
+.domain-content { max-width: 1600px; }
+.domain-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.domain-overview-card { position: relative; display: grid; min-width: 0; grid-template-columns: 1fr auto; align-content: start; gap: 4px 12px; min-height: 220px; padding: 18px 19px; color: inherit; background: #fff; border: 1px solid #e4ebe8; border-radius: 12px; box-shadow: 0 2px 8px rgba(25, 51, 46, .025); text-decoration: none; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+.domain-overview-card:hover { transform: translateY(-2px); border-color: #cbded6; box-shadow: 0 8px 20px rgba(25, 51, 46, .07); }
+.domain-tag { align-self: center; color: #758984; font-size: 11px; font-weight: 700; letter-spacing: .9px; }
+.domain-overview-icon { display: grid; width: 36px; height: 36px; grid-row: span 2; place-items: center; color: #287da1; background: #e8f4f8; border-radius: 10px; font-size: 25px; font-weight: 600; }
+.electricity-domain .domain-overview-icon { color: #7565dc; background: #f0edff; }
+.heating-domain .domain-overview-icon { color: #ba7e1f; background: #fbf1df; }
+.domain-overview-card h2 { grid-column: 1 / -1; margin-top: 5px; font-size: 20px; }
+.domain-card-label { color: #82908b; font-size: 12px; }
+.domain-card-value { overflow: hidden; grid-column: 1 / -1; margin-top: 5px; color: #1c3432; font-family: "Space Grotesk", sans-serif; font-size: 29px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.domain-card-cost { min-height: 20px; color: #42675d; font-size: 13px; font-weight: 600; }
+.domain-card-detail { min-height: 34px; color: #889691; font-size: 12px; line-height: 1.45; }
+.domain-card-link { align-self: end; grid-column: 1 / -1; margin-top: 5px; color: #16816e; font-size: 13px; font-weight: 700; }
+.total-cost-overview { margin: 0 0 16px; padding: 18px 20px; color: #e9f5ef; background: linear-gradient(115deg, #173a35, #23594c); border-radius: 12px; box-shadow: 0 5px 15px rgba(23, 58, 53, .12); }
+.total-cost-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.total-cost-heading .domain-tag { color: #a5c9b9; }
+.total-cost-heading h2 { margin-top: 5px; color: #f4fbf7; font-size: 19px; }
+.total-cost-heading p, .total-cost-caption { margin-top: 5px; color: #b7d0c6; font-size: 12px; line-height: 1.5; }
+.total-cost-heading > strong { color: #fff; font-family: "Space Grotesk", sans-serif; font-size: 28px; white-space: nowrap; }
+.total-cost-breakdown { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 13px; padding-top: 12px; border-top: 1px solid rgba(231, 247, 239, .16); color: #c2d8ce; font-size: 12px; }
+.total-cost-breakdown span { display: flex; gap: 8px; align-items: baseline; }
+.total-cost-breakdown strong { color: #f4fbf7; font-variant-numeric: tabular-nums; }
+.domain-detail-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; margin: 16px 0; }
+.domain-detail-summary .summary-card { min-height: 122px; }
+.domain-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.domain-detail-grid > * { min-width: 0; }
+.domain-entry-panel { margin-top: 14px; }
+.domain-entry-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 12px; }
+.domain-entry-form label { display: grid; min-width: 150px; flex: 1 1 180px; gap: 5px; color: #647772; font-size: 12px; font-weight: 600; }
+.domain-entry-form input { width: 100%; height: 38px; padding: 0 10px; color: #405954; background: #fbfcfb; border: 1px solid #dfe8e4; border-radius: 7px; font-size: 14px; }
+.domain-entry-form .button { flex: 0 0 auto; }
+.domain-entry-status { margin-top: 9px; color: #28725f; font-size: 12px; }
+.domain-entry-status[data-state="error"] { color: #a64646; }
+.domain-entry-status[hidden] { display: none; }
+.domain-range-control { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0; padding: 11px 14px; background: #fff; border: 1px solid #e5ece9; border-radius: 10px; }
+.domain-chart-wrap { position: relative; height: 290px; margin: 14px -4px 0 -7px; }
+.domain-chart-wrap canvas { width: 100% !important; height: 100% !important; }
+.domain-table-wrap { overflow-x: auto; }
+.domain-table-wrap table { min-width: 560px; }
+.domain-message { margin-top: 12px; padding: 10px 12px; color: #963939; background: #fff0ef; border: 1px solid #f2d7d4; border-radius: 8px; font-size: 13px; }
+.domain-message[hidden] { display: none; }
+.domain-cost-note { margin-top: 7px; color: #87938f; font-size: 12px; line-height: 1.5; }
+.heating-entry-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 15px; }
+.heating-entry-grid .purchase-panel { margin-top: 0; }
+.domain-note { color: #83918c; font-size: 12px; line-height: 1.5; }
+.domain-settings-panel { margin-top: 16px; }
+.domain-pricing-grid { margin-top: 14px; }
+
+@media (max-width: 1000px) {
+    .domain-overview-grid { grid-template-columns: 1fr; }
+    .domain-overview-card { min-height: 0; }
+    .domain-detail-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+    .domain-detail-summary { grid-template-columns: 1fr; gap: 9px; }
+    .domain-range-control { align-items: flex-start; flex-direction: column; }
+    .domain-chart-wrap { height: 245px; }
+    .heating-entry-grid { grid-template-columns: 1fr; }
+    .domain-entry-form { align-items: stretch; flex-direction: column; }
+    .domain-entry-form label { width: 100%; flex-basis: auto; }
+    .domain-entry-form .button { align-self: flex-start; }
+}

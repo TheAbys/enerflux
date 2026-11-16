@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 
+	"github.com/theabys/enerflux/internal/analytics"
 	"github.com/theabys/enerflux/internal/api"
 	"github.com/theabys/enerflux/internal/config"
 	"github.com/theabys/enerflux/internal/dashboard"
 	"github.com/theabys/enerflux/internal/database"
+	"github.com/theabys/enerflux/internal/domainconfig"
 	"github.com/theabys/enerflux/internal/health"
 	"github.com/theabys/enerflux/internal/logger"
 	"github.com/theabys/enerflux/internal/measurements"
@@ -32,6 +34,12 @@ func main() {
 		return
 	}
 	sourceConfigService := sourceconfig.NewService(sourceConfigRepository, sourceconfig.FromConfig(cfg))
+	domainConfigRepository := domainconfig.NewRepository(db)
+	if err := domainConfigRepository.EnsureSchema(context.Background()); err != nil {
+		log.Error("domain configuration storage not available", "error", err)
+		return
+	}
+	domainConfigService := domainconfig.NewService(domainConfigRepository)
 
 	// Repo
 	measurementRepo := measurements.NewMeasurementRepo(db)
@@ -43,11 +51,14 @@ func main() {
 	measurementService := measurements.NewMeasurementService(log, measurementRepo)
 
 	metricService := metrics.NewMetricService(log, measurementService)
+	analyticsService := analytics.NewService(measurementRepo, domainConfigService)
 
 	measurementHandler := measurements.NewMeasurementHandler(measurementService)
 	healthHandler := health.NewHealthHandler()
 	metricHandler := metrics.NewMetricHandler(metricService)
 	sourceConfigHandler := sourceconfig.NewHandler(sourceConfigService)
+	domainConfigHandler := domainconfig.NewHandler(domainConfigService)
+	analyticsHandler := analytics.NewHandler(analyticsService, cfg.HomeAssistantReadToken)
 	dashboardHandler := dashboard.NewDashboardHandler()
 
 	// API
@@ -55,6 +66,8 @@ func main() {
 		measurementHandler,
 		metricHandler,
 		sourceConfigHandler,
+		domainConfigHandler,
+		analyticsHandler,
 		healthHandler,
 		dashboardHandler,
 	)

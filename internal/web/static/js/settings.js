@@ -1,4 +1,5 @@
 const SETTINGS_ENDPOINT = "/api/v1/configuration/sources";
+const DOMAIN_SETTINGS_ENDPOINT = "/api/v1/configuration/domains";
 
 const SETTINGS_FIELDS = {
     solarLogURL: "solarlog-url",
@@ -42,6 +43,58 @@ async function loadSettings() {
     }
 }
 
+function setOptionalNumber(id, value) {
+    document.getElementById(id).value = value === null || value === undefined ? "" : String(value);
+}
+
+async function loadDomainSettings() {
+    try {
+        const response = await fetch(DOMAIN_SETTINGS_ENDPOINT, { headers: { Accept: "application/json" } });
+        if (!response.ok) throw new Error(await readError(response, "Could not load resource settings."));
+        const settings = await response.json();
+        document.getElementById("time-zone").value = settings.timeZone || "Europe/Berlin";
+        setOptionalNumber("electricity-price", settings.electricityPricePerKWh);
+        setOptionalNumber("water-price", settings.waterPricePerM3);
+        setOptionalNumber("wastewater-price", settings.wastewaterPricePerM3);
+        setOptionalNumber("pellet-capacity", settings.pelletTankCapacityKg);
+    } catch (error) {
+        setMessage("domain-settings-error", error.message || "Could not load resource settings.");
+    }
+}
+
+async function saveDomainSettings(event) {
+    event.preventDefault();
+    const button = document.getElementById("save-domain-settings");
+    const numberOrNull = id => {
+        const value = document.getElementById(id).value.trim();
+        return value === "" ? null : Number(value);
+    };
+    const payload = {
+        timeZone: document.getElementById("time-zone").value.trim(),
+        electricityPricePerKWh: numberOrNull("electricity-price"),
+        waterPricePerM3: numberOrNull("water-price"),
+        wastewaterPricePerM3: numberOrNull("wastewater-price"),
+        pelletTankCapacityKg: numberOrNull("pellet-capacity")
+    };
+    button.disabled = true;
+    setMessage("domain-settings-error", "");
+    setMessage("domain-settings-status", "Saving resource settings…");
+    try {
+        const response = await fetch(DOMAIN_SETTINGS_ENDPOINT, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error(await readError(response, "Could not save resource settings."));
+        setMessage("domain-settings-status", "Prices, capacity, and time zone saved in PostgreSQL.");
+    } catch (error) {
+        setMessage("domain-settings-status", "");
+        setMessage("domain-settings-error", error.message || "Could not save resource settings.");
+    } finally {
+        button.disabled = false;
+    }
+}
+
 async function saveSettings(event) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -78,5 +131,7 @@ async function saveSettings(event) {
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("source-settings-form").addEventListener("submit", saveSettings);
+    document.getElementById("domain-settings-form").addEventListener("submit", saveDomainSettings);
     loadSettings();
+    loadDomainSettings();
 });

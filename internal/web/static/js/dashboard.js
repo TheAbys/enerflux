@@ -1,46 +1,28 @@
 const METRICS = {
-    "grid.consumption.power": { label: "Grid consumption", group: "Power", unit: "W" },
-    "pv.power": { label: "Solar production", group: "Power", unit: "W" },
-    "pv.dc.power": { label: "Solar DC production", group: "Power", unit: "W" },
-    "device.power": { label: "Device power", group: "Power", unit: "W" },
-    "heating.pellet.stock": { label: "Pellet stock", group: "Heating & climate", unit: "" },
-    "climate.temperature.outside": { label: "Outside temperature", group: "Heating & climate", unit: "°C" },
-    "device.energy.total": { label: "Device energy total", group: "Energy", unit: "Wh" },
-    "energy.yield.today": { label: "Solar yield today", group: "Energy", unit: "Wh" },
-    "energy.yield.yesterday": { label: "Solar yield yesterday", group: "Energy", unit: "Wh" },
-    "water.meter.reading": { label: "Water meter reading", group: "Water", unit: "m³" }
+    "water.meter.reading": { label: "Water meter total", unit: "m³", domain: "Water" },
+    "grid.consumption.power": { label: "Grid power", unit: "W", domain: "Electricity" },
+    "pv.power": { label: "Solar production", unit: "W", domain: "Electricity" },
+    "pv.dc.power": { label: "Solar DC production", unit: "W", domain: "Electricity" },
+    "device.power": { label: "Device power", unit: "W", domain: "Electricity" },
+    "device.energy.total": { label: "Device cumulative energy", unit: "Wh", domain: "Electricity" },
+    "heating.pellet.stock": { label: "Pellet stock", unit: "kg", domain: "Heating · pellets" },
+    "climate.temperature.outside": { label: "Outside temperature", unit: "°C", domain: "Climate" }
 };
 
-const SERIES_COLORS = ["#159b83", "#5d82d8", "#df9f35", "#916ce0", "#df6e74", "#2da4b9"];
-const REFRESH_INTERVAL_MS = 60000;
-const MAX_INTERPOLATION_GAP_MS = 15 * 60 * 1000;
-const PELLET_CAPACITY_KEY = "enerflux.pelletCapacityKg";
-
+const RANGES = { "15m": 15 * 60 * 1000, "1h": 60 * 60 * 1000, "24h": 24 * 60 * 60 * 1000, "7d": 7 * 24 * 60 * 60 * 1000 };
+const COLORS = ["#159b83", "#5d82d8", "#df9f35", "#916ce0", "#df6e74", "#2da4b9"];
 let chart = null;
-let currentRange = { from: Date.now() - 15 * 60 * 1000, to: Date.now(), label: "Last 15 minutes", live: true };
+let selectedRange = "15m";
 let reloadTimer = null;
 let requestSequence = 0;
-let cachedPelletPoints = [];
 
-function formatNumber(value, maximumFractionDigits = 2) {
-    if (!Number.isFinite(value)) return "—";
-    return new Intl.NumberFormat(undefined, { maximumFractionDigits, minimumFractionDigits: 0 }).format(value);
+function formatNumber(value, digits = 2) {
+    const number = Number(value);
+    return Number.isFinite(number) ? new Intl.NumberFormat(undefined, { maximumFractionDigits: digits }).format(number) : "—";
 }
 
-function formatValue(value, unit = "") {
-    if (!Number.isFinite(Number(value))) return "—";
-    const numeric = Number(value);
-    const normalizedUnit = String(unit).trim().toLowerCase();
-    const digits = normalizedUnit === "m³" || normalizedUnit === "m3"
-        ? 3
-        : Math.abs(numeric) < 10 && !Number.isInteger(numeric) ? 2 : 1;
-    return `${formatNumber(numeric, digits)}${unit ? ` ${unit}` : ""}`;
-}
-
-function formatEnergy(kWh) {
-    if (!Number.isFinite(kWh)) return "—";
-    if (Math.abs(kWh) < 0.05) return `${formatNumber(kWh * 1000, 0)} Wh`;
-    return `${formatNumber(kWh, 2)} kWh`;
+function formatValue(value, unit) {
+    return value === null || value === undefined ? "—" : `${formatNumber(value, 2)}${unit ? ` ${unit}` : ""}`;
 }
 
 function formatTimestamp(timestamp, includeDate = true) {
@@ -50,73 +32,20 @@ function formatTimestamp(timestamp, includeDate = true) {
         : { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(date);
 }
 
-function formatAxisTimestamp(timestamp, duration) {
-    const date = new Date(timestamp);
-    const options = duration <= 36 * 60 * 60 * 1000
-        ? { hour: "2-digit", minute: "2-digit" }
-        : { day: "2-digit", month: "short", hour: "2-digit" };
-    return new Intl.DateTimeFormat(undefined, options).format(date);
+function selectedMetric() {
+    const key = document.getElementById("metric").value;
+    return { key, ...(METRICS[key] || { label: key, unit: "", domain: "Measurement" }) };
 }
 
-function metricLabel(key) {
-    return METRICS[key]?.label || key;
+function chartWindow() {
+    const to = Date.now();
+    return { from: to - RANGES[selectedRange], to };
 }
 
-function currentMetricKey() {
-    return document.getElementById("metric").value;
-}
-
-async function fetchMetric(key, from, to) {
-    const query = new URLSearchParams({
-        key,
-        from: new Date(from).toISOString(),
-        to: new Date(to).toISOString(),
-        limit: "200000"
-    });
-    const response = await fetch(`/api/v1/metrics/?${query.toString()}`, { headers: { Accept: "application/json" } });
-    if (!response.ok) {
-        let message = `Could not load ${metricLabel(key)}.`;
-        try {
-            const body = await response.json();
-            if (body.error) message = body.error;
-        } catch (_) {
-            // Keep the useful fallback if the response is not JSON.
-        }
-        throw new Error(message);
-    }
-    const rows = await response.json();
-    return Array.isArray(rows) ? rows.sort((a, b) => new Date(a.TS) - new Date(b.TS)) : [];
-}
-
-async function fetchLatestWaterReadingBefore(timestamp) {
-    const query = new URLSearchParams({
-        type: "water.meter.reading",
-        to: new Date(timestamp).toISOString()
-    });
-    const response = await fetch(`/api/v1/measurements/latest?${query.toString()}`, { headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error("Could not load the previous water meter reading.");
-    const reading = await response.json();
-    if (!reading) return [];
-    return [{ TS: reading.ts, Value: reading.value, Unit: reading.unit, Source: reading.source }];
-}
-
-function groupBySource(points) {
-    const groups = new Map();
-    for (const point of points) {
-        const source = point.Source || "unknown";
-        if (!groups.has(source)) groups.set(source, []);
-        groups.get(source).push(point);
-    }
-    for (const series of groups.values()) {
-        series.sort((a, b) => new Date(a.TS) - new Date(b.TS));
-    }
-    return groups;
-}
-
-function colorForSource(source, index) {
+function sourceColor(source, index) {
     let hash = 0;
     for (let i = 0; i < source.length; i += 1) hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0;
-    return SERIES_COLORS[Math.abs(hash + index) % SERIES_COLORS.length];
+    return COLORS[Math.abs(hash + index) % COLORS.length];
 }
 
 function withAlpha(hex, alpha) {
@@ -127,47 +56,105 @@ function withAlpha(hex, alpha) {
     return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
-function renderChart(points, key, range) {
-    const canvas = document.getElementById("chart");
-    const emptyState = document.getElementById("chart-empty");
-    const duration = range.to - range.from;
-    const groups = groupBySource(points);
-    const unit = points.find(point => point.Unit)?.Unit || METRICS[key]?.unit || "";
-    const heading = metricLabel(key);
+function setDomainSummary(data) {
+    const water = data.water;
+    document.getElementById("overview-water-value").textContent = formatValue(water.consumed.value, "m³");
+    document.getElementById("overview-water-cost").textContent = water.consumed.costEur === null ? "Water rates not configured" : `${formatValue(water.consumed.costEur, "EUR")} estimated · 30 days`;
+    document.getElementById("overview-water-reading").textContent = water.currentReading
+        ? `Latest meter total ${formatValue(water.currentReading.value, water.currentReading.unit)} · ${formatTimestamp(water.currentReading.ts)}`
+        : "No meter readings stored";
 
-    document.getElementById("chart-title").textContent = heading;
-    document.getElementById("chart-unit").textContent = unit || "—";
-    document.getElementById("chart-subtitle").textContent = `Readings ${range.label.toLowerCase()}`;
-    document.getElementById("sample-count").textContent = `${formatNumber(points.length, 0)} ${points.length === 1 ? "reading" : "readings"}`;
+    const electricity = data.electricity;
+    document.getElementById("overview-electricity-value").textContent = formatValue(electricity.consumed.value, "kWh");
+    document.getElementById("overview-electricity-cost").textContent = electricity.consumed.costEur === null ? "Electricity tariff not configured" : `${formatValue(electricity.consumed.costEur, "EUR")} estimated · today`;
+    document.getElementById("overview-electricity-power").textContent = electricity.currentPower
+        ? `Current grid power ${formatValue(electricity.currentPower.value, electricity.currentPower.unit)}`
+        : "No grid power readings today";
 
-    if (chart) {
-        chart.destroy();
-        chart = null;
-    }
+    const heating = data.heating;
+    document.getElementById("overview-heating-stock").textContent = heating.currentStock
+        ? formatValue(heating.currentStock.value, heating.currentStock.unit)
+        : "—";
+    document.getElementById("overview-heating-usage").textContent = heating.consumedLast30DaysKg === null
+        ? "Last 30 days: no estimate"
+        : `Last 30 days: ${formatValue(heating.consumedLast30DaysKg, "kg")} · ${formatValue(heating.averageDaily30DaysKg, "kg/covered day")}`;
+    document.getElementById("overview-heating-forecast").textContent = heating.forecastNextHourKg === null
+        ? heating.forecastStatus
+        : `Next hour estimate ${formatValue(heating.forecastNextHourKg, "kg")}`;
 
-    if (points.length === 0) {
-        emptyState.hidden = false;
+    const totalCost = data.totalCost;
+    document.getElementById("total-cost-value").textContent = formatValue(totalCost.totalEur, "EUR");
+    document.getElementById("total-cost-caption").textContent = totalCost.complete
+        ? "Complete estimate across water, electricity, and pellet heating."
+        : `Incomplete estimate — add rates and readings for ${totalCost.missingDomains.join(", ") || "all domains"}.`;
+    document.getElementById("total-cost-water").textContent = formatValue(totalCost.waterEur, "EUR");
+    document.getElementById("total-cost-electricity").textContent = formatValue(totalCost.electricityEur, "EUR");
+    document.getElementById("total-cost-heating").textContent = formatValue(totalCost.heatingEur, "EUR");
+}
+
+function renderReadings(points, unit) {
+    const body = document.getElementById("readings-body");
+    body.replaceChildren();
+    const latest = [...points].sort((a, b) => new Date(b.TS) - new Date(a.TS)).slice(0, 10);
+    if (!latest.length) {
+        const row = document.createElement("tr");
+        row.className = "empty-row";
+        const cell = document.createElement("td");
+        cell.colSpan = 3;
+        cell.textContent = "No readings in this range";
+        row.appendChild(cell);
+        body.appendChild(row);
         return;
     }
+    for (const point of latest) {
+        const row = document.createElement("tr");
+        const time = document.createElement("td");
+        time.textContent = formatTimestamp(point.TS);
+        const source = document.createElement("td");
+        source.textContent = point.Source || "Unknown source";
+        const value = document.createElement("td");
+        value.textContent = formatValue(point.Value, point.Unit || unit);
+        row.append(time, source, value);
+        body.appendChild(row);
+    }
+}
 
-    emptyState.hidden = true;
+function renderChart(points, metric, range) {
+    if (chart) chart.destroy();
+    chart = null;
+    const canvas = document.getElementById("chart");
+    const empty = document.getElementById("chart-empty");
+    document.getElementById("chart-title").textContent = metric.label;
+    document.getElementById("chart-unit").textContent = metric.unit || "—";
+    document.getElementById("chart-subtitle").textContent = `${metric.domain} observations · ${formatTimestamp(range.from)} – ${formatTimestamp(range.to)}`;
+    document.getElementById("sample-count").textContent = `${formatNumber(points.length, 0)} ${points.length === 1 ? "reading" : "readings"}`;
+    document.getElementById("readings-description").textContent = `Latest stored ${metric.domain.toLowerCase()} values for ${metric.label.toLowerCase()}`;
+    empty.hidden = points.length > 0;
+    if (!points.length) return;
+
+    const groups = new Map();
+    for (const point of points) {
+        const source = point.Source || "unknown";
+        if (!groups.has(source)) groups.set(source, []);
+        groups.get(source).push(point);
+    }
     const datasets = [...groups.entries()].map(([source, series], index) => {
-        const color = colorForSource(source, index);
+        const color = sourceColor(source, index);
         return {
             label: source,
             data: series.map(point => ({ x: new Date(point.TS).getTime(), y: Number(point.Value) })),
             borderColor: color,
-            backgroundColor: withAlpha(color, 0.11),
+            backgroundColor: withAlpha(color, 0.12),
             borderWidth: 2,
             pointRadius: 0,
             pointHoverRadius: 4,
             pointHitRadius: 8,
             fill: "start",
-            tension: 0.2,
+            tension: 0.18,
             spanGaps: false
         };
     });
-
+    const duration = range.to - range.from;
     chart = new Chart(canvas, {
         type: "line",
         data: { datasets },
@@ -180,12 +167,7 @@ function renderChart(points, key, range) {
             interaction: { mode: "nearest", intersect: false, axis: "x" },
             plugins: {
                 decimation: { enabled: true, algorithm: "lttb", samples: 1400, threshold: 2000 },
-                legend: {
-                    display: groups.size > 1,
-                    position: "bottom",
-                    align: "start",
-                    labels: { usePointStyle: true, pointStyle: "circle", boxWidth: 7, boxHeight: 7, padding: 17, color: "#788681", font: { family: "DM Sans", size: 12 } }
-                },
+                legend: { display: groups.size > 1, position: "bottom", align: "start", labels: { usePointStyle: true, pointStyle: "circle", padding: 15, color: "#788681", font: { family: "DM Sans", size: 12 } } },
                 tooltip: {
                     backgroundColor: "#173632",
                     titleColor: "#d9eee8",
@@ -193,473 +175,78 @@ function renderChart(points, key, range) {
                     borderColor: "rgba(255,255,255,.12)",
                     borderWidth: 1,
                     padding: 10,
-                    displayColors: true,
-                    usePointStyle: true,
                     callbacks: {
                         title: items => items.length ? formatTimestamp(items[0].parsed.x) : "",
-                        label: context => ` ${context.dataset.label}: ${formatValue(context.parsed.y, unit)}`
+                        label: context => ` ${context.dataset.label}: ${formatValue(context.parsed.y, metric.unit)}`
                     }
                 }
             },
             scales: {
-                x: {
-                    type: "linear",
-                    min: range.from,
-                    max: range.to,
-                    grid: { display: false },
-                    border: { display: false },
-                    ticks: {
-                        maxTicksLimit: 8,
-                        maxRotation: 0,
-                        color: "#93a09a",
-                        font: { family: "DM Sans", size: 11 },
-                        callback: value => formatAxisTimestamp(Number(value), duration)
-                    }
-                },
-                y: {
-                    beginAtZero: false,
-                    border: { display: false },
-                    grid: { color: "#edf1ef", drawTicks: false },
-                    ticks: {
-                        maxTicksLimit: 6,
-                        padding: 9,
-                        color: "#93a09a",
-                        font: { family: "DM Sans", size: 11 },
-                        callback: value => `${formatNumber(Number(value), 1)}${unit ? ` ${unit}` : ""}`
-                    }
-                }
+                x: { type: "linear", min: range.from, max: range.to, grid: { display: false }, border: { display: false }, ticks: { maxTicksLimit: 8, maxRotation: 0, color: "#93a09a", font: { family: "DM Sans", size: 11 }, callback: value => new Intl.DateTimeFormat(undefined, duration <= 36 * 60 * 60 * 1000 ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short", hour: "2-digit" }).format(new Date(Number(value))) } },
+                y: { beginAtZero: false, border: { display: false }, grid: { color: "#edf1ef", drawTicks: false }, ticks: { maxTicksLimit: 6, padding: 9, color: "#93a09a", font: { family: "DM Sans", size: 11 }, callback: value => formatValue(Number(value), metric.unit) } }
             }
         }
     });
 }
 
-function updateLatest(points) {
-    const latest = points.reduce((newest, point) => !newest || new Date(point.TS) > new Date(newest.TS) ? point : newest, null);
-    const value = document.getElementById("latest-value");
-    const caption = document.getElementById("latest-caption");
-    if (!latest) {
-        value.textContent = "—";
-        caption.textContent = "No measurements in this range";
-        return;
-    }
-    value.textContent = formatValue(Number(latest.Value), latest.Unit || METRICS[currentMetricKey()]?.unit || "");
-    caption.textContent = `${latest.Source || "Unknown source"} · ${formatTimestamp(latest.TS)}`;
+async function loadOverview() {
+    const response = await fetch("/api/v1/analytics/overview", { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error("Could not load resource overview.");
+    setDomainSummary(await response.json());
 }
 
-function powerToWatts(point) {
-    const value = Number(point.Value);
-    const unit = String(point.Unit || "").trim().toLowerCase();
-    if (unit === "w" || unit === "watt" || unit === "watts") return value;
-    if (unit === "kw" || unit === "kilowatt" || unit === "kilowatts") return value * 1000;
-    return null;
-}
-
-function interpolate(startValue, endValue, fraction) {
-    return startValue + (endValue - startValue) * fraction;
-}
-
-function calculateEnergy(points, from, to) {
-    const groups = groupBySource(points);
-    let wattHours = 0;
-    let segments = 0;
-
-    for (const series of groups.values()) {
-        for (let index = 1; index < series.length; index += 1) {
-            const left = series[index - 1];
-            const right = series[index];
-            const leftTime = new Date(left.TS).getTime();
-            const rightTime = new Date(right.TS).getTime();
-            const gap = rightTime - leftTime;
-            if (gap <= 0 || gap > MAX_INTERPOLATION_GAP_MS) continue;
-            const start = Math.max(leftTime, from);
-            const end = Math.min(rightTime, to);
-            if (end <= start) continue;
-
-            const leftWatts = powerToWatts(left);
-            const rightWatts = powerToWatts(right);
-            if (leftWatts === null || rightWatts === null) continue;
-
-            const startFraction = (start - leftTime) / gap;
-            const endFraction = (end - leftTime) / gap;
-            const startPower = Math.max(0, interpolate(leftWatts, rightWatts, startFraction));
-            const endPower = Math.max(0, interpolate(leftWatts, rightWatts, endFraction));
-            wattHours += ((startPower + endPower) / 2) * ((end - start) / 3600000);
-            segments += 1;
-        }
-    }
-    return { kWh: wattHours / 1000, segments };
-}
-
-function stockUnitIsPercent(unit) {
-    const normalized = String(unit || "").trim().toLowerCase();
-    return normalized === "%" || normalized === "percent" || normalized === "percentage";
-}
-
-function calculatePelletUse(points, from, to) {
-    const groups = groupBySource(points);
-    const units = points.map(point => point.Unit).filter(Boolean);
-    const unit = units[0] || "";
-    let used = 0;
-    let segments = 0;
-
-    for (const series of groups.values()) {
-        for (let index = 1; index < series.length; index += 1) {
-            const left = series[index - 1];
-            const right = series[index];
-            const leftTime = new Date(left.TS).getTime();
-            const rightTime = new Date(right.TS).getTime();
-            const elapsed = rightTime - leftTime;
-            if (elapsed <= 0 || elapsed > MAX_INTERPOLATION_GAP_MS) continue;
-            const start = Math.max(leftTime, from);
-            const end = Math.min(rightTime, to);
-            if (end <= start) continue;
-
-            const decrease = Number(left.Value) - Number(right.Value);
-            if (decrease <= 0) continue;
-            used += decrease * ((end - start) / elapsed);
-            segments += 1;
-        }
-    }
-
-    return { used, unit, segments };
-}
-
-function updateEnergyCard(points, range) {
-    const result = calculateEnergy(points, range.from, range.to);
-    document.getElementById("energy-value").textContent = result.segments ? formatEnergy(result.kWh) : "—";
-    document.getElementById("energy-caption").textContent = result.segments
-        ? `Estimated from ${formatNumber(result.segments, 0)} measured intervals · gaps over 15 min omitted`
-        : "Need consecutive grid power readings in this range";
-}
-
-function updatePelletCard(points, range) {
-    const result = calculatePelletUse(points, range.from, range.to);
-    const calibration = document.getElementById("pellet-calibration");
-    const capacityInput = document.getElementById("tank-capacity");
-    const savedCapacity = Number(localStorage.getItem(PELLET_CAPACITY_KEY));
-    let value = result.used;
-    let unit = result.unit;
-    let description = "Estimated from stock decreases";
-
-    if (stockUnitIsPercent(result.unit)) {
-        calibration.hidden = false;
-        if (Number.isFinite(savedCapacity) && savedCapacity > 0) {
-            capacityInput.value = String(savedCapacity);
-            value = (result.used / 100) * savedCapacity;
-            unit = "kg";
-        } else {
-            unit = "pp";
-            description = "Percentage points · set tank capacity to convert to kg";
-        }
-    } else {
-        calibration.hidden = true;
-        const normalizedUnit = String(result.unit || "").trim().toLowerCase();
-        if (normalizedUnit === "t" || normalizedUnit === "ton" || normalizedUnit === "tonne") {
-            value *= 1000;
-            unit = "kg";
-        }
-    }
-
-    document.getElementById("pellet-value").textContent = result.segments ? formatValue(value, unit) : "—";
-    document.getElementById("pellet-caption").textContent = result.segments
-        ? `${description} · ${range.label.toLowerCase()}`
-        : "Need stock readings across this time range";
-}
-
-function calculateWaterUse(points, from, to) {
-    const readings = [...points].sort((a, b) => new Date(a.TS) - new Date(b.TS));
-    let used = 0;
-    let intervals = 0;
-    let unit = readings.find(point => point.Unit)?.Unit || "m³";
-
-    for (let index = 1; index < readings.length; index += 1) {
-        const left = readings[index - 1];
-        const right = readings[index];
-        const leftTime = new Date(left.TS).getTime();
-        const rightTime = new Date(right.TS).getTime();
-        if (leftTime < from || rightTime > to || rightTime <= leftTime) continue;
-
-        const difference = Number(right.Value) - Number(left.Value);
-        if (!Number.isFinite(difference) || difference < 0) continue;
-        used += difference;
-        intervals += 1;
-    }
-
-    return { used, intervals, readingCount: readings.length, unit };
-}
-
-function updateWaterCard(points, range) {
-    const result = calculateWaterUse(points, range.from, range.to);
-    document.getElementById("water-summary-card").hidden = currentMetricKey() !== "water.meter.reading";
-    document.getElementById("water-value").textContent = result.intervals ? formatValue(result.used, result.unit) : "—";
-    document.getElementById("water-caption").textContent = result.intervals
-        ? `Between ${formatNumber(result.intervals, 0)} complete meter ${result.intervals === 1 ? "interval" : "intervals"} · ${range.label.toLowerCase()}`
-        : result.readingCount < 2
-            ? "Add another reading to calculate water used"
-            : "Choose a wider range to include both readings";
-}
-
-function renderReadings(points) {
-    const body = document.getElementById("readings-body");
-    const latest = [...points].sort((a, b) => new Date(b.TS) - new Date(a.TS)).slice(0, 10);
-    body.replaceChildren();
-
-    if (!latest.length) {
-        const row = document.createElement("tr");
-        row.className = "empty-row";
-        const cell = document.createElement("td");
-        cell.colSpan = 3;
-        cell.textContent = "No measurements in this range";
-        row.appendChild(cell);
-        body.appendChild(row);
-        return;
-    }
-
-    for (const point of latest) {
-        const row = document.createElement("tr");
-        const timestamp = document.createElement("td");
-        timestamp.textContent = formatTimestamp(point.TS);
-        const source = document.createElement("td");
-        const sourceContent = document.createElement("span");
-        sourceContent.className = "source-cell";
-        const dot = document.createElement("span");
-        dot.className = "source-dot";
-        dot.setAttribute("aria-hidden", "true");
-        const sourceName = document.createElement("span");
-        sourceName.textContent = point.Source || "Unknown source";
-        sourceContent.append(dot, sourceName);
-        source.appendChild(sourceContent);
-        const value = document.createElement("td");
-        value.textContent = formatValue(Number(point.Value), point.Unit || "");
-        row.append(timestamp, source, value);
-        body.appendChild(row);
-    }
-}
-
-function updateRangeFooter(range) {
-    document.getElementById("range-description").textContent = `${range.label} · ${formatTimestamp(range.from)} – ${formatTimestamp(range.to)}`;
+async function loadChart(request) {
+    const metric = selectedMetric();
+    const range = chartWindow();
+    const query = new URLSearchParams({ key: metric.key, from: new Date(range.from).toISOString(), to: new Date(range.to).toISOString(), limit: "200000" });
+    const response = await fetch(`/api/v1/metrics/?${query}`, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(`Could not load ${metric.label.toLowerCase()} measurements.`);
+    const points = await response.json();
+    if (request !== requestSequence) return;
+    const chronological = Array.isArray(points) ? points.sort((a, b) => new Date(a.TS) - new Date(b.TS)) : [];
+    renderChart(chronological, metric, range);
+    renderReadings(chronological, metric.unit);
+    document.getElementById("range-description").textContent = `Last ${selectedRange}`;
 }
 
 async function refreshDashboard() {
-    const sequence = ++requestSequence;
-    const selectedKey = currentMetricKey();
-    if (currentRange.live) {
-        const duration = currentRange.to - currentRange.from;
-        currentRange.to = Date.now();
-        currentRange.from = currentRange.to - duration;
-    }
-    const range = { ...currentRange };
-    const metricFrom = range.from;
-    const statsFrom = range.from - MAX_INTERPOLATION_GAP_MS;
-    const energyKey = "grid.consumption.power";
-    const pelletKey = "heating.pellet.stock";
-
-    document.getElementById("load-error").hidden = true;
+    const request = ++requestSequence;
+    document.getElementById("overview-error").hidden = true;
+    document.getElementById("chart-error").hidden = true;
     document.getElementById("last-updated").textContent = "Updating…";
-
-    try {
-        const energyPromise = fetchMetric(energyKey, statsFrom, range.to);
-        const pelletPromise = fetchMetric(pelletKey, statsFrom, range.to);
-        const previousWaterPromise = selectedKey === "water.meter.reading"
-            ? fetchLatestWaterReadingBefore(range.from)
-            : Promise.resolve([]);
-        const selectedPromise = selectedKey === energyKey
-            ? energyPromise
-            : selectedKey === pelletKey
-                ? pelletPromise
-                : fetchMetric(selectedKey, metricFrom, range.to);
-        const [selectedPoints, energyPoints, pelletPoints, previousWaterPoints] = await Promise.all([selectedPromise, energyPromise, pelletPromise, previousWaterPromise]);
-        if (sequence !== requestSequence) return;
-        cachedPelletPoints = pelletPoints;
-
-        const displayPoints = selectedPoints.filter(point => {
-            const timestamp = new Date(point.TS).getTime();
-            return timestamp >= range.from && timestamp <= range.to;
-        });
-        renderChart(displayPoints, selectedKey, range);
-        updateLatest(displayPoints);
-        updateEnergyCard(energyPoints, range);
-        updatePelletCard(pelletPoints, range);
-        updateWaterCard([...previousWaterPoints, ...selectedPoints], range);
-        renderReadings(displayPoints);
-        updateRangeFooter(range);
-        document.getElementById("last-updated").textContent = `Updated ${new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date())}`;
-    } catch (error) {
-        if (sequence !== requestSequence) return;
-        document.getElementById("last-updated").textContent = "Update failed";
-        const errorElement = document.getElementById("load-error");
-        errorElement.textContent = error.message || "Could not load measurements. Please try again.";
-        errorElement.hidden = false;
-    }
-}
-
-function setRange(from, to, label, live = false) {
-    currentRange = { from, to, label, live };
-    refreshDashboard();
-}
-
-function toLocalInputValue(timestamp) {
-    const date = new Date(timestamp);
-    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 16);
-}
-
-function toLocalRFC3339(value) {
-    const date = new Date(value);
-    const pad = part => String(part).padStart(2, "0");
-    const offset = -date.getTimezoneOffset();
-    const sign = offset >= 0 ? "+" : "-";
-    const absoluteOffset = Math.abs(offset);
-    const timezone = `${sign}${pad(Math.floor(absoluteOffset / 60))}:${pad(absoluteOffset % 60)}`;
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00${timezone}`;
-}
-
-async function submitWaterReading(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const timestampInput = document.getElementById("water-reading-time");
-    const valueInput = document.getElementById("water-reading-value");
-    const status = document.getElementById("water-entry-status");
-    const value = Number(valueInput.value);
-    const timestamp = new Date(timestampInput.value);
-
-    if (!Number.isFinite(value) || value < 0 || !Number.isFinite(timestamp.getTime())) {
-        status.dataset.state = "error";
-        status.textContent = "Enter a valid date and a non-negative meter total.";
-        status.hidden = false;
-        return;
-    }
-
-    status.hidden = true;
-    const submitButton = form.querySelector("button[type='submit']");
-    submitButton.disabled = true;
-    try {
-        const response = await fetch("/api/v1/measurements", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify([{
-                ts: toLocalRFC3339(timestampInput.value),
-                type: "water.meter.reading",
-                value,
-                unit: "m³",
-                source: "manual"
-            }])
-        });
-        if (!response.ok) {
-            let message = "Could not save the water reading.";
-            try {
-                const body = await response.json();
-                if (body.error) message = body.error;
-            } catch (_) {
-                // Keep the fallback when the response is not JSON.
-            }
-            throw new Error(message);
-        }
-
-        valueInput.value = "";
-        timestampInput.value = toLocalInputValue(Date.now());
-        document.getElementById("metric").value = "water.meter.reading";
-        status.dataset.state = "success";
-        status.textContent = "Water meter reading saved.";
-        status.hidden = false;
-        refreshDashboard();
-    } catch (error) {
-        status.dataset.state = "error";
-        status.textContent = error.message || "Could not save the water reading.";
-        status.hidden = false;
-    } finally {
-        submitButton.disabled = false;
-    }
+    const results = await Promise.allSettled([loadOverview(), loadChart(request)]);
+    if (request !== requestSequence) return;
+    const overviewError = results[0].status === "rejected" ? results[0].reason : null;
+    const chartError = results[1].status === "rejected" ? results[1].reason : null;
+    document.getElementById("overview-error").textContent = overviewError?.message || "";
+    document.getElementById("overview-error").hidden = !overviewError;
+    document.getElementById("chart-error").textContent = chartError?.message || "";
+    document.getElementById("chart-error").hidden = !chartError;
+    document.getElementById("last-updated").textContent = `Updated ${new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date())}`;
 }
 
 function setupControls() {
-    document.querySelectorAll(".range-option").forEach(button => {
-        button.addEventListener("click", () => {
-            const seconds = Number(button.dataset.range);
-            const label = seconds < 3600 ? `Last ${seconds / 60} minutes`
-                : seconds < 86400 ? `Last ${seconds / 3600} hour${seconds === 3600 ? "" : "s"}`
-                    : `Last ${seconds / 86400} day${seconds === 86400 ? "" : "s"}`;
-            document.querySelectorAll(".range-option").forEach(option => {
-                const active = option === button;
-                option.classList.toggle("active", active);
-                option.setAttribute("aria-pressed", String(active));
-            });
-            const end = Date.now();
-            setRange(end - seconds * 1000, end, label, true);
+    document.querySelectorAll(".range-option").forEach(button => button.addEventListener("click", () => {
+        selectedRange = button.dataset.range;
+        document.querySelectorAll(".range-option").forEach(item => {
+            const active = item === button;
+            item.classList.toggle("active", active);
+            item.setAttribute("aria-pressed", String(active));
         });
-    });
-
-    const customToggle = document.getElementById("custom-range-toggle");
-    const customPanel = document.getElementById("custom-range-panel");
-    customToggle.addEventListener("click", () => {
-        const open = customToggle.getAttribute("aria-expanded") !== "true";
-        customToggle.setAttribute("aria-expanded", String(open));
-        customPanel.hidden = !open;
-        if (open) {
-            document.getElementById("range-from").value = toLocalInputValue(currentRange.from);
-            document.getElementById("range-to").value = toLocalInputValue(currentRange.to);
-        }
-    });
-
-    customPanel.addEventListener("submit", event => {
-        event.preventDefault();
-        const from = new Date(document.getElementById("range-from").value).getTime();
-        const to = new Date(document.getElementById("range-to").value).getTime();
-        if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to) {
-            const errorElement = document.getElementById("load-error");
-            errorElement.textContent = "Choose a start time before the end time.";
-            errorElement.hidden = false;
-            return;
-        }
-        document.querySelectorAll(".range-option").forEach(option => {
-            option.classList.remove("active");
-            option.setAttribute("aria-pressed", "false");
-        });
-        const customLabel = `Custom · ${formatTimestamp(from)} – ${formatTimestamp(to)}`;
-        customToggle.setAttribute("aria-expanded", "false");
-        customPanel.hidden = true;
-        setRange(from, to, customLabel, false);
-    });
-
+        refreshDashboard();
+    }));
     document.getElementById("metric").addEventListener("change", refreshDashboard);
-    document.getElementById("water-entry-form").addEventListener("submit", submitWaterReading);
-    document.getElementById("water-reading-time").value = toLocalInputValue(Date.now());
-    document.getElementById("water-reading-time").max = toLocalInputValue(Date.now());
     document.getElementById("refresh-button").addEventListener("click", refreshDashboard);
-    document.getElementById("auto-refresh").addEventListener("change", setupAutoRefresh);
-    document.getElementById("save-capacity").addEventListener("click", () => {
-        const input = document.getElementById("tank-capacity");
-        const capacity = Number(input.value);
-        if (!Number.isFinite(capacity) || capacity <= 0) {
-            input.setCustomValidity("Enter a tank capacity greater than zero.");
-            input.reportValidity();
-            return;
-        }
-        input.setCustomValidity("");
-        localStorage.setItem(PELLET_CAPACITY_KEY, String(capacity));
-        updatePelletCard(cachedPelletPoints, currentRange);
+    document.getElementById("auto-refresh").addEventListener("change", () => {
+        if (reloadTimer) clearInterval(reloadTimer);
+        reloadTimer = document.getElementById("auto-refresh").checked ? setInterval(refreshDashboard, 60000) : null;
     });
-
-    const savedCapacity = localStorage.getItem(PELLET_CAPACITY_KEY);
-    if (savedCapacity) document.getElementById("tank-capacity").value = savedCapacity;
-}
-
-function setupAutoRefresh() {
-    if (reloadTimer) {
-        clearInterval(reloadTimer);
-        reloadTimer = null;
-    }
-    if (document.getElementById("auto-refresh").checked) {
-        reloadTimer = setInterval(() => {
-            refreshDashboard();
-        }, REFRESH_INTERVAL_MS);
-    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     setupControls();
-    setupAutoRefresh();
     refreshDashboard();
+    reloadTimer = setInterval(refreshDashboard, 60000);
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible" && document.getElementById("auto-refresh").checked) refreshDashboard();
     });
