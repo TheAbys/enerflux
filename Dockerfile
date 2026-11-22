@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # Frontend assets are platform-independent; build them on the native builder platform.
-FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:26-alpine AS frontend-builder
 
 WORKDIR /src
 
