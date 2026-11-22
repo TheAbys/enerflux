@@ -13,7 +13,7 @@ RUN npm ci
 RUN npm run build
 
 
-FROM --platform=$BUILDPLATFORM golang:1.26.5-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
