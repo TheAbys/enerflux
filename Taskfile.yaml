@@ -1,25 +1,112 @@
 version: '3'
 
+dotenv: ['.env']
 
 tasks:
+  frontend:install:
+    desc: Install frontend dependencies from the lockfile
+    sources:
+      - frontend/package.json
+      - frontend/package-lock.json
+    generates:
+      - frontend/node_modules/.task-installed
+    cmds:
+      - npm ci --prefix frontend
+      - touch frontend/node_modules/.task-installed
+
+  frontend:dev:
+    desc: Run the Vite development asset server on port 5173
+    dir: frontend
+    deps:
+      - frontend:install
+    cmds:
+      - npm run dev -- --host 0.0.0.0
+
+  frontend:build:
+    desc: Build Vue, TypeScript, and Tailwind assets for Gin
+    dir: frontend
+    deps:
+      - frontend:install
+    cmds:
+      - npm run build
+
+  frontend:typecheck:
+    desc: Type-check Vue and TypeScript files
+    dir: frontend
+    deps:
+      - frontend:install
+    cmds:
+      - npm run typecheck
+
+  k3s:helm-lint:
+    desc: Lint both EnerFlux Helm charts
+    cmds:
+      - helm lint k3s/helm/enerflux-infrastructure
+      - helm lint k3s/helm/enerflux
+
   api:
+    desc: Build frontend assets and run the Go API
     cmds:
-      - set -a && source .env && set +a && go run ./cmd/api
-      
+      - task: frontend:build
+      - task: api:run
+
+  api:run:
+    desc: Run the Go API using the current frontend build
+    env:
+      VITE_DEV_SERVER: ""
+    cmds:
+      - go run ./cmd/api
+
+  api:dev:
+    desc: Run the Go API with Vite development assets
+    cmds:
+      - VITE_DEV_SERVER="${VITE_DEV_SERVER:-http://localhost:5173}" go run ./cmd/api
+
   agent:
+    desc: Run the Go data collection agent
     cmds:
-      - set -a && source .env && set +a && go run ./cmd/agent
+      - go run ./cmd/agent
+
+  services:up:
+    desc: Start PostgreSQL and MQTT for local development
+    cmds:
+      - docker compose -f docker/docker-compose.yaml up --detach --wait --wait-timeout 60 db mosquitto
+
+  services:down:
+    desc: Stop local PostgreSQL and MQTT containers without removing their data
+    cmds:
+      - docker compose -f docker/docker-compose.yaml down
 
   dev:
+    desc: Start local services and run the site at http://localhost:8080
+    deps:
+      - services:up
     cmds:
-      - task --parallel api agent
+      - echo "Open http://localhost:5173 (Vite proxy + HMR) or http://localhost:8080 (Gin directly)."
+      - task --parallel api:dev agent frontend:dev
+
+  run:
+    desc: Run API and agent with built frontend assets
+    deps:
+      - frontend:build
+    cmds:
+      - task --parallel api:run agent
 
   test:
-    desc: Run all tests
+    desc: Run Go tests and frontend type checks
     cmds:
       - go test ./...
+      - task: frontend:typecheck
 
   build:
-    desc: Build binary
+    desc: Build frontend assets and Go binaries
     cmds:
-      - go build -o bin/enerflux ./cmd/api
+      - task: frontend:build
+      - mkdir -p bin
+      - go build -trimpath -o bin/enerflux-api ./cmd/api
+      - go build -trimpath -o bin/enerflux-agent ./cmd/agent
+
+  clean:
+    desc: Remove generated frontend assets and Go binaries
+    cmds:
+      - rm -rf bin internal/web/static/build

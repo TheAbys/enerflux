@@ -117,7 +117,7 @@ func TestIntegratePowerUsesTrapezoidAndUnitConversion(t *testing.T) {
 		}
 		points = append(points, point(start.Add(time.Duration(index)*10*time.Minute), value, unit, "solarlog"))
 	}
-	got := integratePower(points, start, start.Add(time.Hour), time.UTC)
+	got := integratePower(points, start, start.Add(time.Hour))
 	closeTo(t, got.kWh, 1.5, 1e-9)
 	if got.intervals != 6 || got.covered != time.Hour {
 		t.Fatalf("unexpected interval coverage: %+v", got)
@@ -131,12 +131,12 @@ func TestIntegratePowerClipsRangeAndRejectsLongGaps(t *testing.T) {
 		point(start.Add(15*time.Minute), 3000, "W", "one"),
 		point(start.Add(31*time.Minute), 3000, "W", "one"),
 	}
-	got := integratePower(points, start.Add(7*time.Minute+30*time.Second), start.Add(15*time.Minute), time.UTC)
+	got := integratePower(points, start.Add(7*time.Minute+30*time.Second), start.Add(15*time.Minute))
 	closeTo(t, got.kWh, .3125, 1e-9)
 	if got.intervals != 1 {
 		t.Fatalf("expected exactly the clipped 15 minute segment, got %d", got.intervals)
 	}
-	tooLong := integratePower(points[1:], start.Add(15*time.Minute), start.Add(31*time.Minute), time.UTC)
+	tooLong := integratePower(points[1:], start.Add(15*time.Minute), start.Add(31*time.Minute))
 	if tooLong.intervals != 0 || tooLong.kWh != 0 {
 		t.Fatalf("expected gap over 15 minutes to be omitted, got %+v", tooLong)
 	}
@@ -147,7 +147,7 @@ func TestIntegratePowerClampsNegativePower(t *testing.T) {
 	got := integratePower([]ReadingPoint{
 		point(start, -1000, "W", "one"),
 		point(start.Add(10*time.Minute), 1000, "W", "one"),
-	}, start, start.Add(10*time.Minute), time.UTC)
+	}, start, start.Add(10*time.Minute))
 	closeTo(t, got.kWh, 1.0/12.0, 1e-9)
 }
 
@@ -178,7 +178,7 @@ func TestMeterUsageUsesBaselineAndProratesRange(t *testing.T) {
 		point(start.Add(4*time.Hour), 3000, "L", "manual"),
 		point(start.Add(5*time.Hour), 4000, "L", "manual"),
 	}
-	got := meterUsage(points, start.Add(time.Hour), start.Add(5*time.Hour), time.UTC, "m³")
+	got := meterUsage(points, start.Add(time.Hour), start.Add(5*time.Hour))
 	closeTo(t, got.value, 4, 1e-9) // 2 m³ clipped from the first interval plus two 1 m³ intervals
 	if got.intervals != 3 {
 		t.Fatalf("expected two valid intervals, got %+v", got)
@@ -252,7 +252,7 @@ func TestPelletUsageIgnoresRefillsAndClipsWindow(t *testing.T) {
 		point(start.Add(20*time.Hour), 2800, "kg", "manual"), // refill boundary
 		point(start.Add(30*time.Hour), 2700, "kg", "manual"),
 	}
-	got := pelletUsage(points, start.Add(5*time.Hour), start.Add(30*time.Hour), time.UTC)
+	got := pelletUsage(points, start.Add(5*time.Hour), start.Add(30*time.Hour))
 	closeTo(t, got.value, 150, 1e-9)
 	if got.intervals != 2 || got.covered != 15*time.Hour {
 		t.Fatalf("unexpected pellet coverage: %+v", got)

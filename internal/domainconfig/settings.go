@@ -5,6 +5,8 @@ import (
 	"math"
 	"time"
 	_ "time/tzdata"
+
+	"github.com/theabys/enerflux/internal/units"
 )
 
 type Settings struct {
@@ -31,8 +33,8 @@ func (s *Settings) Validate() error {
 		value *float64
 	}{
 		{"electricity price per kWh", s.ElectricityPricePerKWh},
-		{"water price per m³", s.WaterPricePerM3},
-		{"wastewater price per m³", s.WastewaterPricePerM3},
+		{"water price per " + units.CubicMeter, s.WaterPricePerM3},
+		{"wastewater price per " + units.CubicMeter, s.WastewaterPricePerM3},
 	} {
 		if field.value != nil && (math.IsNaN(*field.value) || math.IsInf(*field.value, 0) || *field.value < 0) {
 			return fmt.Errorf("%s cannot be negative", field.name)

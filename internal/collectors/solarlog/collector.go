@@ -7,6 +7,7 @@ import (
 
 	"github.com/theabys/enerflux/internal/collectors"
 	"github.com/theabys/enerflux/internal/measurements"
+	"github.com/theabys/enerflux/internal/units"
 )
 
 type SolarLogCollector struct {
@@ -55,14 +56,14 @@ func FromSolarLog(r Response) []measurements.Measurement {
 			TS:     ts,
 			Type:   "pv.power",
 			Value:  float64(s.PVPower),
-			Unit:   "W",
+			Unit:   units.Watt,
 			Source: "solarlog",
 		},
 		{
 			TS:     ts,
 			Type:   "pv.dc.power",
 			Value:  float64(s.PVDCPower),
-			Unit:   "W",
+			Unit:   units.Watt,
 			Source: "solarlog",
 		},
 
@@ -121,7 +122,7 @@ func FromSolarLog(r Response) []measurements.Measurement {
 			TS:     ts,
 			Type:   "grid.consumption.power",
 			Value:  float64(s.ConsumptionPower),
-			Unit:   "W",
+			Unit:   units.Watt,
 			Source: "solarlog",
 		},
 

@@ -8,6 +8,13 @@
 # Go build and coverage artifacts
 /bin/
 /dist/
+/api
+/agent
+/backups/
+/frontend/node_modules/
+/frontend/dist/
+/internal/web/static/build/
+/.task/
 *.test
 *.out
 *.coverprofile

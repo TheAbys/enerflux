@@ -1,18 +1,24 @@
 services:
   db:
-    image: postgres:16
+    image: postgres:16.16
     container_name: enerflux-db
     environment:
       POSTGRES_USER: enerflux
       POSTGRES_PASSWORD: enerflux
       POSTGRES_DB: enerflux
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
     ports:
       - "5432:5432"
     volumes:
       - enerflux_data:/var/lib/postgresql/data
 
   mosquitto:
-    image: eclipse-mosquitto:2
+    image: eclipse-mosquitto:2.1.2-alpine
     restart: unless-stopped
     ports:
       - "1883:1883"

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/theabys/enerflux/internal/measurements"
+	"github.com/theabys/enerflux/internal/units"
 )
 
 type ShellyCollector struct {
@@ -62,7 +63,7 @@ func FromSwitchStatus(status SwitchStatus, deviceID string) []measurements.Measu
 			TS:     ts,
 			Type:   "device.power",
 			Value:  *status.APower,
-			Unit:   "W",
+			Unit:   units.Watt,
 			Source: deviceID,
 		})
 	}

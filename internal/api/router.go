@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/theabys/enerflux/internal/analytics"
@@ -15,6 +16,12 @@ import (
 
 func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.MetricHandler, sourceConfigHandler *sourceconfig.Handler, domainConfigHandler *domainconfig.Handler, analyticsHandler *analytics.Handler, h *health.HealthHandler, d *dashboard.DashboardHandler) *gin.Engine {
 	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/static/") {
+			c.Header("Cache-Control", "no-cache")
+		}
+		c.Next()
+	})
 	router.LoadHTMLGlob("internal/web/templates/*")
 	router.Static("/static", "./internal/web/static")
 
@@ -53,6 +60,8 @@ func NewRouter(m *measurements.MeasurementHandler, metricsHandler *metrics.Metri
 		health := v1.Group("/health")
 		{
 			health.GET("", h.Get)
+			health.GET("/live", h.Liveness)
+			health.GET("/ready", h.Readiness)
 		}
 	}
 

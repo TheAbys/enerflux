@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/theabys/enerflux/internal/units"
 )
 
 type Handler struct {
@@ -128,7 +129,7 @@ func (h *Handler) HomeAssistant(c *gin.Context) {
 			response.WaterMeterTotalM3 = &value
 		}
 	}
-	if data.Heating.CurrentStock != nil && data.Heating.CurrentStock.Unit == "kg" {
+	if data.Heating.CurrentStock != nil && data.Heating.CurrentStock.Unit == units.Kilogram {
 		response.PelletStockKg = &data.Heating.CurrentStock.Value
 	}
 	c.Header("Cache-Control", "no-store")

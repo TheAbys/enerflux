@@ -54,7 +54,7 @@ func main() {
 	analyticsService := analytics.NewService(measurementRepo, domainConfigService)
 
 	measurementHandler := measurements.NewMeasurementHandler(measurementService)
-	healthHandler := health.NewHealthHandler()
+	healthHandler := health.NewHealthHandler(db)
 	metricHandler := metrics.NewMetricHandler(metricService)
 	sourceConfigHandler := sourceconfig.NewHandler(sourceConfigService)
 	domainConfigHandler := domainconfig.NewHandler(domainConfigService)

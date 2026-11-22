@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@source "../../internal/web/templates";
+@source "./";
+
+@theme {
+  --color-energy-ink: #173632;
+  --color-energy-muted: #788681;
+  --color-energy-border: #e5ebe8;
+  --color-energy-surface: #ffffff;
+  --color-energy-page: #f5f7f6;
+  --color-energy-water: #287da1;
+  --color-energy-electricity: #d39a35;
+  --color-energy-heating: #4f886e;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+}

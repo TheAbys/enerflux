@@ -51,3 +51,8 @@ func (db *DB) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, err
 func (db *DB) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
 	return db.pool.CopyFrom(ctx, tableName, columnNames, rowSrc)
 }
+
+// Ping verifies that the database pool can reach PostgreSQL.
+func (db *DB) Ping(ctx context.Context) error {
+	return db.pool.Ping(ctx)
+}

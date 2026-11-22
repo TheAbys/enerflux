@@ -3,6 +3,13 @@
 .idea
 .vscode
 
+frontend/node_modules
+frontend/dist
+/internal/web/static
+/api
+/agent
+/backups
+
 .env
 .env.*
 
