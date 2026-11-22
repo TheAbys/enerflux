@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: enerflux-mqtt
+  labels:
+    app.kubernetes.io/name: enerflux-mqtt
+{{ include "enerflux-infrastructure.labels" . | indent 4 }}
+spec:
+  type: NodePort
+  ports:
+    - name: mqtt
+      port: 1883
+      targetPort: mqtt
+      nodePort: {{ .Values.mqtt.nodePort }}
+  selector:
+    app.kubernetes.io/name: enerflux-mqtt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: enerflux-mqtt-headless
+  labels:
+    app.kubernetes.io/name: enerflux-mqtt
+{{ include "enerflux-infrastructure.labels" . | indent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - name: mqtt
+      port: 1883
+      targetPort: mqtt
+  selector:
+    app.kubernetes.io/name: enerflux-mqtt
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: enerflux-mqtt
+  labels:
+    app.kubernetes.io/name: enerflux-mqtt
+{{ include "enerflux-infrastructure.labels" . | indent 4 }}
+spec:
+  serviceName: enerflux-mqtt-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: enerflux-mqtt
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: enerflux-mqtt
+{{ include "enerflux-infrastructure.labels" . | indent 8 }}
+    spec:
+      securityContext:
+        fsGroup: 1883
+{{ with .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+{{ end }}
+      containers:
+        - name: mosquitto
+          image: {{ .Values.mqtt.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          ports:
+            - name: mqtt
+              containerPort: 1883
+          readinessProbe:
+            tcpSocket:
+              port: mqtt
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: mqtt
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+{{ toYaml .Values.mqtt.resources | indent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /mosquitto/config/mosquitto.conf
+              subPath: mosquitto.conf
+              readOnly: true
+            - name: data
+              mountPath: /mosquitto/data
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Values.mqtt.configMapName }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+{{ with .Values.mqtt.persistence.storageClassName }}
+        storageClassName: {{ . | quote }}
+{{ end }}
+        resources:
+          requests:
+            storage: {{ .Values.mqtt.persistence.size | quote }}

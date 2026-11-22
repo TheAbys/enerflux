@@ -1,0 +1,30 @@
+imagePullPolicy: IfNotPresent
+imagePullSecrets: []
+
+postgres:
+  image: postgres:16.16
+  persistence:
+    size: 5Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+mqtt:
+  image: eclipse-mosquitto:2.1.2-alpine
+  nodePort: 31883
+  configMapName: enerflux-stack-config
+  persistence:
+    size: 1Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi

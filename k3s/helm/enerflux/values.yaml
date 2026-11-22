@@ -1,0 +1,48 @@
+imagePullPolicy: Always
+imagePullSecrets: []
+deploymentRevision: ""
+
+secrets:
+  appConfigName: enerflux-app-config
+  databaseAuthName: enerflux-db-auth
+  databaseUrlKey: DATABASE_URL
+
+configMap:
+  name: enerflux-stack-config
+
+api:
+  image:
+    repository: ghcr.io/theabys/enerflux-api
+    tag: develop
+  replicas: 1
+  service:
+    type: NodePort
+    port: 8080
+    nodePort: 30080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+agent:
+  image:
+    repository: ghcr.io/theabys/enerflux-agent
+    tag: develop
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+migrations:
+  image: postgres:16.16
+  imagePullPolicy: IfNotPresent
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 86400

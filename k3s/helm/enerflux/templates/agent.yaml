@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enerflux-agent
+  labels:
+    app.kubernetes.io/name: enerflux-agent
+{{ include "enerflux.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.agent.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: enerflux-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: enerflux-agent
+{{ include "enerflux.labels" . | indent 8 }}
+{{ if .Values.deploymentRevision }}
+      annotations:
+        enerflux.io/deploy-revision: {{ .Values.deploymentRevision | quote }}
+{{ end }}
+    spec:
+{{ with .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+{{ end }}
+      containers:
+        - name: agent
+          image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secrets.appConfigName }}
+          env:
+            - name: API_URL
+              value: http://enerflux-api:8080
+            - name: API_PORT
+              value: ":8080"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.databaseAuthName }}
+                  key: {{ .Values.secrets.databaseUrlKey }}
+            - name: MQTT_BROKER_URL
+              value: tcp://enerflux-mqtt:1883
+          resources:
+{{ toYaml .Values.agent.resources | indent 12 }}

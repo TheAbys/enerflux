@@ -1,0 +1,6 @@
+apiVersion: v2
+name: enerflux-infrastructure
+description: PostgreSQL and Mosquitto services for EnerFlux
+type: application
+version: 0.1.0
+appVersion: "1"
